@@ -31,6 +31,14 @@ const filterOptions = [
   { title: "Malicious", value: "malicious" },
   { title: "Normal", value: "normal" },
 ];
+const resetForm = () => {
+  file.value = null;
+  sampleId.value = null;
+  results.value = null;
+  summary.value = null;
+  insights.value = null;
+  page.value = 1;
+};
 
 // This is the structure of the sample profiles in object form instead of csv form.
 const sampleProfiles = {
@@ -124,7 +132,8 @@ const analyzeData = async () => {
         results.value = data.data;
         summary.value = data.summary;
         insights.value = data.feature_insights;
-        page.value = 1;
+        totalPages.value = data.pagination.total_pages;
+        totalItems.value = data.pagination.total;
       } else {
         throw new Error("Unexpected response structure");
       }
@@ -155,19 +164,14 @@ const analyzeData = async () => {
   }
 };
 
-const paginatedResults = computed(() => {
-  if (!results.value) return [];
+let isFetching = false;
 
-  const start = (page.value - 1) * itemsPerPage.value;
-  const end = start + itemsPerPage.value;
+watch([page, itemsPerPage, filter, sortBy, order], async () => {
+  if (analysisType.value !== "csv" || isFetching) return;
 
-  return results.value.slice(start, end);
-});
-
-watch([page, itemsPerPage, filter, sortBy, order], () => {
-  if (analysisType.value === "csv") {
-    analyzeData();
-  }
+  isFetching = true;
+  await analyzeData();
+  isFetching = false;
 });
 watch([filter, sortBy, order], () => {
   page.value = 1;
@@ -255,7 +259,7 @@ watch([filter, sortBy, order], () => {
           <v-divider class="my-4" />
 
           <v-row>
-            <v-col cols="12" class="d-flex justify-end">
+            <v-col cols="12" md="6" class="d-flex justify-end">
               <v-btn
                 type="submit"
                 color="primary"
@@ -264,8 +268,11 @@ watch([filter, sortBy, order], () => {
                 :disabled="!file && !sampleId"
                 prepend-icon="mdi-brain"
               >
-                Run AI Analysis
+                Run Threat Analysis
               </v-btn>
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-btn @click="resetForm" variant="text">Reset</v-btn>
             </v-col>
           </v-row>
         </v-form>
@@ -381,7 +388,7 @@ watch([filter, sortBy, order], () => {
               </thead>
               <tbody>
                 <tr
-                  v-for="row in paginatedResults"
+                  v-for="row in results"
                   :key="row.row_index"
                   :class="
                     row.prediction === 'Malicious' ? 'bg-red-lighten-5' : ''
@@ -425,9 +432,8 @@ watch([filter, sortBy, order], () => {
             <div class="d-flex justify-center mt-4">
               <v-pagination
                 v-model="page"
-                :length="results ? Math.ceil(results.length / itemsPerPage) : 0"
-                total-visible="20"
-                @update:model-value="fetchData"
+                :length="totalPages"
+                total-visible="7"
               />
             </div>
           </v-card>
