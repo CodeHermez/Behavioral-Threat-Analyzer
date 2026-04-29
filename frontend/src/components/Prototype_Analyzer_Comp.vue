@@ -1,7 +1,6 @@
 <script setup>
-import { ref } from "vue";
+import { ref, watch, computed } from "vue";
 import axios from "axios";
-import { computed } from "vue";
 
 const file = ref(null);
 const sampleId = ref(null);
@@ -16,13 +15,21 @@ const insights = ref(null);
 const page = ref(1);
 const itemsPerPage = ref(10);
 const filter = ref("all"); // all | malicious | normal
-
+const sortBy = ref("confidence");
+const order = ref("desc");
+const totalPages = ref(0);
+const totalItems = ref(0);
 const sampleOptions = [
   { title: "Sample 1: Standard Employee (Normal)", value: "sample_normal" },
   {
     title: "Sample 2: High-Risk Activity (Suspicious)",
     value: "sample_suspicious",
   },
+];
+const filterOptions = [
+  { title: "All", value: "all" },
+  { title: "Malicious", value: "malicious" },
+  { title: "Normal", value: "normal" },
 ];
 
 // This is the structure of the sample profiles in object form instead of csv form.
@@ -108,7 +115,10 @@ const analyzeData = async () => {
 
       if (actualFile) formData.append("csvFile", actualFile);
 
-      const { data } = await axios.post(`${url}modal-csv/`, formData);
+      const { data } = await axios.post(
+        `${url}modal-csv/?page=${page.value}&page_size=${itemsPerPage.value}&filter=${filter.value}&sort_by=${sortBy.value}&order=${order.value}`,
+        formData,
+      );
       console.log(data);
       if (data?.status === "success") {
         results.value = data.data;
@@ -153,6 +163,15 @@ const paginatedResults = computed(() => {
 
   return results.value.slice(start, end);
 });
+
+watch([page, itemsPerPage, filter, sortBy, order], () => {
+  if (analysisType.value === "csv") {
+    analyzeData();
+  }
+});
+watch([filter, sortBy, order], () => {
+  page.value = 1;
+});
 </script>
 
 <template>
@@ -169,7 +188,7 @@ const paginatedResults = computed(() => {
       <v-card-text>
         <v-form @submit.prevent="analyzeData">
           <v-row>
-            <v-col cols="12" md="4">
+            <v-col cols="12" md="6">
               <div class="text-subtitle-2 font-weight-bold mb-2">
                 Option 1: Upload Dataset
               </div>
@@ -185,9 +204,34 @@ const paginatedResults = computed(() => {
                 hint="For scanning large batches of logs"
                 persistent-hint
               />
+              <v-select
+                v-model="filter"
+                :items="filterOptions"
+                label="Filter"
+                density="compact"
+              />
+              <v-select
+                v-model="sortBy"
+                :items="[
+                  { title: 'Confidence', value: 'confidence' },
+                  { title: 'Prediction', value: 'prediction' },
+                ]"
+                label="Sort By"
+                density="compact"
+              />
+
+              <v-select
+                v-model="order"
+                :items="[
+                  { title: 'Descending', value: 'desc' },
+                  { title: 'Ascending', value: 'asc' },
+                ]"
+                label="Order"
+                density="compact"
+              />
             </v-col>
 
-            <v-col cols="12" md="4">
+            <v-col cols="12" md="6">
               <div class="text-subtitle-2 font-weight-bold mb-2">
                 Option 2: Select Sample Profile
               </div>
@@ -204,28 +248,6 @@ const paginatedResults = computed(() => {
                 :disabled="!!file"
                 hint="For evaluating individual risk profiles"
                 persistent-hint
-              />
-            </v-col>
-            <v-col cols="12" md="4">
-              <!-- <div class="d-flex justify-end align-center mt-2">
-                Option 2: Select Sample Profile
-              </div> -->
-              <span class="mr-2 text-caption">Rows per page:</span>
-              <v-select
-                v-model="filter"
-                :items="sampleOptions"
-                label="Filter"
-                item-title="title"
-                item-value="value"
-                prepend-icon="mdi-account-search"
-                variant="outlined"
-                density="compact"
-                style="max-width: 100px"
-                clearable
-                :disabled="!!file"
-                hint="For evaluating individual risk profiles"
-                persistent-hint
-                hide-details
               />
             </v-col>
           </v-row>
@@ -404,7 +426,8 @@ const paginatedResults = computed(() => {
               <v-pagination
                 v-model="page"
                 :length="results ? Math.ceil(results.length / itemsPerPage) : 0"
-                total-visible="10"
+                total-visible="20"
+                @update:model-value="fetchData"
               />
             </div>
           </v-card>

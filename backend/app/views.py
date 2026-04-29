@@ -13,6 +13,8 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import base64
 import joblib
+from django.core.paginator import Paginator
+
 
 
 forest_ = None
@@ -32,17 +34,25 @@ class ModalSingle(APIView):
     def post(self,request,format=None):
         try:
             data = request.data #take in the json object with the user data or row in the case of the our format
-            print(data)
             df = pd.DataFrame([data]) #turn into a dataframe
-            x_pred = df.drop(columns=['index','is_malicious'], errors='ignore') #drop unneeded fields 'index' and 'is_malicious'
+            df = df.drop(columns=['index','is_malicious'], errors='ignore') #drop unneeded fields 'index' and 'is_malicious'
+            df_encoded = pd.get_dummies(df)
+            if mod and hasattr(mod,"feature_names_in_"):
+                model_features=list(mod.feature_names_in_)
+                for col in model_features:
+                    if col not in df_encoded.columns:
+                        df_encoded[col]=0
+                df_encoded=df_encoded[model_features]
+
             if mod:
-                pred = int(mod.predict(x_pred)[0]) #retrieve the first value in the after values are dripped with is the id
-                conf=float(max(mod.predict_proba(x_pred)[0]))
+                pred = int(mod.predict(df_encoded)[0]) #retrieve the first value in the after values are dripped with is the id
+                conf=float(max(mod.predict_proba(df_encoded)[0]))
             else:
                 #default confidence values are given if mod doesnt contain anything
                 pc= 1 if data.get('late_exit_flag')==1 else 0
-                conf = 0.92
+                conf = 0.75
             
+
             #this indicates if the values are malicious or normal based on the predicted confidence
             pred_l = 'Malicious' if pred == 1 else 'Normal'            
             risk_indicators=[]
@@ -52,75 +62,30 @@ class ModalSingle(APIView):
                 risk_indicators.append("Campus entry detected during the weekend")
             if data.get('late_exit_flag') == 1:
                 risk_indicators.append("Flagged for late exit")
-            if not risk_indicators and pred_l == "Normal":
-                risk_indicators.append("No abnormal behavior or risks detected.")
+            if not risk_indicators:
+                risk_indicators.append(
+                    "No abnormal behavior detected"
+                    if pred_l == "Normal"
+                    else "Potential anomaly detected"
+                )
 
             # return the exact structure required in frontend integration
             return Response({
-                "status": "success",
-                "data": {
-                    "prediction": pred_l,
-                    "confidence": conf,
-                    "risk_indicators": risk_indicators
-                }
-            }, status=status.HTTP_200_OK)
+                    "status": "success",
+                    "data": {
+                        "prediction": pred_l,
+                        "confidence": round(conf, 4),
+                        "risk_indicators": risk_indicators
+                    }
+                }, status=status.HTTP_200_OK)
         except Exception as e:
             #default excetion thats caught in case of errors
-            print(f"Server Error: ${e}")
+            print(f"Server Error: {e}")
             return Response({'status':'Internal error',
                              'message':str(e)},
                              status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
         return Response({'message':'Modal single'},status=status.HTTP_200_OK)
-           
-class Modal(APIView):
-    def get(self, request, format=None):
-        return Response({'response':'success','message':'Hello there bob'})
-    def post(self, request, format=None):
-
-        file_data = request.FILES.get('csvFile')#retrieve the file thats sent from frontend
-        #if file doesnt exist return error with error response
-        if not file_data:
-            return Response({'error':'Bad request structure','message':'File data not found'}, status= status.HTTP_400_BAD_REQUEST)
-        
-        #preprocessing of the data and feature engineering of dataframe
-        df_raw = pd.read_csv(file_data)
-        df_raw=df_raw.drop_duplicates()
-        df_raw = df_raw.dropna() 
-        df_raw=df_raw.drop(columns=['employee_campus','has_medical_history','employee_origin_country','has_foreign_citizenship','is_contractor'])
-        #data encoding to easily be processed by the ML algorthim (Random Forest)
-        df_encoded = pd.get_dummies(df_raw,columns=['employee_department','employee_position'],prefix='categ')
-        feature_trn,feature_tst,label_trn,label_tst = sk.model_selection.train_test_split(df_encoded.drop(columns=['is_malicious']),df_encoded.is_malicious,train_size=0.75,random_state=113)
-    
-        forest = RandomForestClassifier(n_estimators=100, max_depth=10, class_weight='balanced',random_state=113) #created a random forest object that would be used for trianing with pre paramters like the seed value of 113 aswell as the weight class and the total depth of the tree
-        forest.fit(feature_trn,label_trn) #the training sequence initiated 
-        forest_pred = forest.predict(feature_tst) #the predicted values are generated and they are evaluated after they are calculated
-
-        #retireve the indexes specifically of the is_malicious fields and pull what they have in common
-        scores = pd.Series(forest.feature_importances_,index=df_encoded.drop(columns=['is_malicious']).columns)
-        graph,axis = plt.subplots(figsize=(10,6))
-        scores.nlargest(5).plot(kind='barh',ax=axis)
-        axis.set_title("Top 5 Features for detecting indiser threats")
-        #get the binary version of an image and convert it to base64 and return that
-        buf = io.BytesIO()
-        plt.savefig(buf,format='png',bbox_inches='tight')
-        plt.close(graph)
-        buf.seek(0)
-        img = base64.b64encode(buf.read()).decode('utf-8')
-
-        #classification data aswell as sucess message, report, confusion matrix, scores and image
-        #to be displayed in the frontend.
-        return Response({'status':'success', 
-                         'data':{
-                             "class_report":sk.metrics.classification_report(label_tst, forest_pred),
-                            'confusion_matrix':sk.metrics.confusion_matrix(label_tst, forest_pred),
-                            'scores': scores.nlargest(5),
-                            'image':img
-                         }
-                         }, 
-                         status=status.HTTP_200_OK)
-    
-from django.core.paginator import Paginator
 
 class ModalCSV(APIView):
     def post(self, request, format=None):
@@ -147,10 +112,7 @@ class ModalCSV(APIView):
                 columns=['employee_department', 'employee_position'],
                 prefix='categ'
             )
-
             x_pred = df_encoded.drop(columns=['is_malicious', 'index'], errors='ignore')
-
-
             preds = mod.predict(x_pred)
             probs = mod.predict_proba(x_pred)
 
@@ -164,7 +126,6 @@ class ModalCSV(APIView):
                 conf = float(max(probs[i]))
 
                 label = 'Malicious' if pred_val == 1 else 'Normal'
-
                 if label == 'Malicious':
                     threats_found += 1
                     if conf >= 0.85:
@@ -186,7 +147,6 @@ class ModalCSV(APIView):
                     risk_indicators.append(
                         "Normal behavior" if label == "Normal" else "Anomaly detected"
                     )
-
                 results.append({
                     "row_index": int(i),
                     "prediction": label,
@@ -205,9 +165,7 @@ class ModalCSV(APIView):
             order = request.query_params.get("order", "desc")
 
             reverse = True if order == "desc" else False
-
             results.sort(key=lambda x: x.get(sort_by, 0), reverse=reverse)
-
             #pagination to best handle request on frontend of the prototype 
             page = int(request.query_params.get("page", 1))
             page_size = int(request.query_params.get("page_size", 10))
@@ -224,7 +182,6 @@ class ModalCSV(APIView):
                 {"feature": str(k), "importance": float(v)}
                 for k, v in global_scores.items()
             ]
-
             return Response({
                 "status": "success",
                 "summary": {
