@@ -130,9 +130,6 @@ class ModalCSV(APIView):
             return Response({'error': 'File data not found'}, status=400)
 
         try:
-            # =====================
-            # 1. PROCESS DATA
-            # =====================
             df_raw = pd.read_csv(file_data).drop_duplicates().dropna()
             cols_to_drop = [
                 'employee_campus',
@@ -153,9 +150,7 @@ class ModalCSV(APIView):
 
             x_pred = df_encoded.drop(columns=['is_malicious', 'index'], errors='ignore')
 
-            # =====================
-            # 2. BATCH PREDICTION
-            # =====================
+
             preds = mod.predict(x_pred)
             probs = mod.predict_proba(x_pred)
 
@@ -199,9 +194,6 @@ class ModalCSV(APIView):
                     "risk_indicators": risk_indicators
                 })
 
-            # =====================
-            # 3. FILTERING
-            # =====================
             filter_type = request.query_params.get("filter", "all")
 
             if filter_type == "malicious":
@@ -209,9 +201,6 @@ class ModalCSV(APIView):
             elif filter_type == "normal":
                 results = [r for r in results if r["prediction"] == "Normal"]
 
-            # =====================
-            # 4. SORTING
-            # =====================
             sort_by = request.query_params.get("sort_by", "confidence") #if theres no value in the request the return dummy value
             order = request.query_params.get("order", "desc")
 

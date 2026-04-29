@@ -188,25 +188,22 @@ const paginatedResults = computed(() => {
             </v-col>
 
             <v-col cols="12" md="4">
-              <!-- <div class="d-flex justify-end align-center mt-2">
+              <div class="text-subtitle-2 font-weight-bold mb-2">
                 Option 2: Select Sample Profile
-              </div> -->
-              <span class="mr-2 text-caption">Rows per page:</span>
+              </div>
               <v-select
-                v-model="filter"
-                :items="['all', 'malicious', 'normal']"
-                label="Filter"
+                v-model="sampleId"
+                :items="sampleOptions"
                 item-title="title"
                 item-value="value"
+                label="-- Choose a sample --"
                 prepend-icon="mdi-account-search"
                 variant="outlined"
-                density="compact"
-                style="max-width: 100px"
+                density="comfortable"
                 clearable
                 :disabled="!!file"
                 hint="For evaluating individual risk profiles"
                 persistent-hint
-                hide-details
               />
             </v-col>
             <v-col cols="12" md="4">
