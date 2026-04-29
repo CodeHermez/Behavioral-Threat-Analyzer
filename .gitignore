@@ -33,6 +33,7 @@ db.sqlite3-journal
 backend/media/
 backend/staticfiles/
 backend/static/
+backend/app/RForestModal.pkl
 # Fallbacks just in case
 media/
 staticfiles/
