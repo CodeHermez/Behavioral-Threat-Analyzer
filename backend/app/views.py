@@ -14,9 +14,11 @@ import matplotlib.pyplot as plt
 import base64
 import joblib
 from django.core.paginator import Paginator
+import google.generativeai as genai
 
-
-
+genai.configure(api_key=os.environ.get("GEMINI_API_KEY")) #configure api key
+#initialization of model 2.5
+model = genai.GenerativeModel('gemini-2.5-flash')
 forest_ = None
 df_encoded_ = None
 #module try catch that fetches the model once its been tested on the user data
@@ -24,9 +26,11 @@ CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(CURRENT_DIR, 'RForestModal.pkl')
 try:
     mod = joblib.load(MODEL_PATH) #this is the model thats used to test 
-    print("✅ SUCCESS: Random Forest Model loaded successfully into memory!")
+    print("SUCCESSFULY loaded Random Forest Model into memory!")
 except:
     mod=None #if the file is not found in the same directory as this view file it will retrieve None value
+    print("UNSUCCESSFUL load of Random Forest Model into memory!")
+
 
 class ModalSingle(APIView):
     #post endpoint that gets called when a single sample user is tested
