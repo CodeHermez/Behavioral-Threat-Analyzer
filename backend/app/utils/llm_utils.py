@@ -6,7 +6,7 @@ import google.generativeai as genai
 genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
 
 # Initialize the model (Gemini 1.5 Flash is incredibly fast and cheap for this)
-model = genai.GenerativeModel('gemini-1.5-flash')
+model = genai.GenerativeModel('gemini-3')
 
 from collections import Counter
 

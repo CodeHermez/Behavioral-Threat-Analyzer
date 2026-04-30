@@ -1,24 +1,17 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import authentication, permissions, status
-from django.contrib.auth.models import User
+from rest_framework import status
 import os
-import io
 import pandas as pd
-import matplotlib.pyplot as plt
-import sklearn as sk
-from sklearn.ensemble import RandomForestClassifier, RandomForestClassifier 
 import matplotlib
 matplotlib.use('Agg') 
-import matplotlib.pyplot as plt
-import base64
 import joblib
 from django.core.paginator import Paginator
-import google.generativeai as genai
+from .utils.llm_utils import (
+    generate_threat_explanation,
+    generate_batch_explanation   
+)
 
-genai.configure(api_key=os.environ.get("GEMINI_API_KEY")) #configure api key
-#initialization of model 2.5
-model = genai.GenerativeModel('gemini-2.5-flash')
 forest_ = None
 df_encoded_ = None
 #module try catch that fetches the model once its been tested on the user data
