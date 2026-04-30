@@ -1,15 +1,9 @@
-# your_app/llm_utils.py
 import os
 import google.generativeai as genai
-
-# Configure the API key
 genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
 
-# Initialize the model (Gemini 1.5 Flash is incredibly fast and cheap for this)
 model = genai.GenerativeModel('gemini-3')
-
 from collections import Counter
-
 def build_batch_summary(results):
     total = len(results)
     malicious = [r for r in results if r["prediction"] == "Malicious"]
@@ -132,6 +126,36 @@ def build_batch_payload(results):
         **summary,
         "risk_distribution": distribution
     }
+
+def generate_batch_explanation(summary, insights):
+    prompt = f"""
+    You are a cybersecurity analyst explaining a system scan result to a non-technical manager.
+
+    Summary:
+    - Total Logs: {summary['total_scanned']}
+    - Threats Found: {summary['threats_found']}
+    - High Risk: {summary['high_risk']}
+    - Medium Risk: {summary['medium_risk']}
+    - Threat Percentage: {summary['threat_percentage']}%
+
+    Top Contributing Features:
+    {', '.join([f"{i['feature']} ({round(i['importance']*100)}%)" for i in insights])}
+
+    Write a short, clear explanation (3–4 sentences) explaining:
+    - What this means overall
+    - Whether this is concerning
+    - What management should do next
+
+    Keep it simple and non-technical.
+    """
+
+    try:
+        response = model.generate_content(prompt)
+        return response.text.strip()
+    except Exception as e:
+        print(f"Batch Explanation Error: {e}")
+        return "Batch explanation unavailable."
+    
 
 def generate_batch_explanation(batch_data):
     prompt = f"""

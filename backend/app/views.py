@@ -12,8 +12,6 @@ from .utils.llm_utils import (
     generate_batch_explanation   
 )
 
-forest_ = None
-df_encoded_ = None
 #module try catch that fetches the model once its been tested on the user data
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(CURRENT_DIR, 'RForestModal.pkl')
@@ -66,13 +64,21 @@ class ModalSingle(APIView):
                     else "Potential anomaly detected"
                 )
 
+            profile = {
+                "department": data.get("categ_Engineering Department") and "Engineering" or "Other",
+                "seniority": data.get("employee_seniority_years", 0)
+            }
+
+            explanation  = generate_threat_explanation(profile,pred_l,conf,risk_indicators)
+
             # return the exact structure required in frontend integration
             return Response({
                     "status": "success",
                     "data": {
                         "prediction": pred_l,
                         "confidence": round(conf, 4),
-                        "risk_indicators": risk_indicators
+                        "risk_indicators": risk_indicators,
+                        "explanation":explanation 
                     }
                 }, status=status.HTTP_200_OK)
         except Exception as e:
@@ -117,6 +123,8 @@ class ModalCSV(APIView):
             threats_found = 0
             high_risk = 0
             medium_risk = 0
+            MAX_LLM_ROWS = 5
+            llm_count = 0
 
             for i in range(len(x_pred)):
                 pred_val = int(preds[i])
@@ -144,12 +152,25 @@ class ModalCSV(APIView):
                     risk_indicators.append(
                         "Normal behavior" if label == "Normal" else "Anomaly detected"
                     )
-                results.append({
-                    "row_index": int(i),
-                    "prediction": label,
-                    "confidence": round(conf, 4),
-                    "risk_indicators": risk_indicators
-                })
+             
+
+                result_row = {
+                        "row_index": int(i),
+                        "prediction": label,
+                        "confidence": round(conf, 4),
+                        "risk_indicators": risk_indicators,
+                        "explanation": None  
+                }
+                if label == "Malicious" and conf >= 0.85 and llm_count < MAX_LLM_ROWS:
+                    user_profile = {
+                        "department": "Unknown",  # optional improvement later
+                        "seniority": row.get("employee_seniority_years", 0)
+                    }
+
+                    result_row['explanation']  = generate_threat_explanation(user_profile,label,conf,risk_indicators)
+                    llm_count += 1
+
+                results.append(result_row)
 
             filter_type = request.query_params.get("filter", "all")
 
@@ -179,16 +200,20 @@ class ModalCSV(APIView):
                 {"feature": str(k), "importance": float(v)}
                 for k, v in global_scores.items()
             ]
-            return Response({
-                "status": "success",
-                "summary": {
-                    "total_scanned": len(results),
+            summary={
+                    "total_scanned": len(df_raw),
                     "threats_found": threats_found,
                     "high_risk": high_risk,
                     "medium_risk": medium_risk,
                     "threat_percentage": round((threats_found / len(results)) * 100, 1) if results else 0
-                },
+                }
+            explanation = generate_batch_explanation(summary, insights)
+
+            return Response({
+                "status": "success",
+                "summary":summary,
                 "feature_insights": insights,
+                "batch_explanation":explanation,
                 "data": list(page_obj),
                 "pagination": {
                     "page": page,
