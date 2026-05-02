@@ -1,8 +1,7 @@
 import os
-import google.generativeai as genai
-genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+from google import genai
+model = genai.Client().models
 
-model = genai.GenerativeModel('gemini-3')
 from collections import Counter
 def build_batch_summary(results):
     total = len(results)
@@ -61,41 +60,33 @@ def build_row_explanation_data(row):
     return sorted(factors, key=lambda x: x["impact"], reverse=True)
 
 def generate_threat_explanation(user_profile, prediction, confidence, risk_indicators):
-    risk_level = get_risk_level(confidence)
 
-    formatted_indicators = "\n".join(
-        [f"- {r['name']} ({r['impact']} impact)" for r in risk_indicators]
-    )
+    formatted_indicators = "\n".join([f"- {r}" for r in risk_indicators])
 
     prompt = f"""
     You are a cybersecurity risk analyst explaining model decisions to a non-technical manager.
 
-    The ML model evaluated the following employee:
+    Employee:
     - Department: {user_profile.get('department')}
     - Seniority: {user_profile.get('seniority')} years
 
     Model Output:
     - Prediction: {prediction}
     - Confidence: {confidence * 100:.1f}%
-    - Risk Level: {risk_level}
 
-    Key contributing factors:
+    Key Indicators:
     {formatted_indicators}
 
-    Base your explanation ONLY on the provided risk indicators.
-    Do not introduce new assumptions or external reasoning.
-
-    Write a concise, professional 3 sentence explanation explaining why this activity was flagged and what should be monitored.
-    Use simple, non-technical language.
+    Explain clearly in 2-3 sentences why this was flagged.
+    Keep it simple and non-technical.
     """
 
     try:
         response = model.generate_content(prompt)
         return response.text.strip()
-    except Exception as e:
-        print(f"Gemini API Error: {e}")
+    except:
         return fallback_explanation(prediction, risk_indicators)
-
+    
 #save function that gets initiated when AI model request fails.
 def fallback_explanation(prediction, risk_indicators):
     indicators = ", ".join([r["name"] for r in risk_indicators])
@@ -155,33 +146,3 @@ def generate_batch_explanation(summary, insights):
     except Exception as e:
         print(f"Batch Explanation Error: {e}")
         return "Batch explanation unavailable."
-    
-
-def generate_batch_explanation(batch_data):
-    prompt = f"""
-    You are a cybersecurity analyst summarizing threat patterns for a non-technical manager.
-
-    Dataset Summary:
-    - Total records: {batch_data['total_records']}
-    - Malicious cases: {batch_data['malicious_count']}
-    - Percentage flagged: {batch_data['malicious_percentage']:.1f}%
-
-    Top risk patterns:
-    {batch_data['top_patterns']}
-
-    Risk distribution:
-    {batch_data['risk_distribution']}
-
-    Write a short executive summary explaining:
-    - What patterns are emerging
-    - What the main risks are
-    - What should be monitored
-
-    Keep it simple and actionable.
-    """
-
-    try:
-        response = model.generate_content(prompt)
-        return response.text.strip()
-    except:
-        return "Summary unavailable."

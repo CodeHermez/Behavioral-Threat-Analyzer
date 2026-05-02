@@ -205,15 +205,15 @@ class ModalCSV(APIView):
                     "threats_found": threats_found,
                     "high_risk": high_risk,
                     "medium_risk": medium_risk,
-                    "threat_percentage": round((threats_found / len(results)) * 100, 1) if results else 0
+                    "threat_percentage": round((threats_found / len(df_raw)) * 100, 1) if results else 0,
                 }
-            explanation = generate_batch_explanation(summary, insights)
+            
+            summary['llm_explanation'] = generate_batch_explanation(summary, insights)
 
             return Response({
                 "status": "success",
                 "summary":summary,
                 "feature_insights": insights,
-                "batch_explanation":explanation,
                 "data": list(page_obj),
                 "pagination": {
                     "page": page,

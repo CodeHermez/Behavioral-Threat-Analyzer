@@ -23,6 +23,7 @@ venv/
 env/
 .venv/
 backend/proto_env/  
+backend/env_
 # Django specific
 *.log
 local_settings.py

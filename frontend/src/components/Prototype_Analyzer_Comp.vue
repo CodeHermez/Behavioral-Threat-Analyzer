@@ -342,6 +342,21 @@ watch([filter, sortBy, order], () => {
                   </div>
                 </v-card-text>
               </v-card>
+              <v-card class="mb-6" elevation="2" border>
+                <v-card-title class="bg-grey-lighten-4">
+                  🧠 AI Threat Summary
+                </v-card-title>
+
+                <v-card-text>
+                  <div v-if="summary?.llm_explanation">
+                    {{ summary.llm_explanation }}
+                  </div>
+
+                  <div v-else class="text-caption text-medium-emphasis">
+                    No batch-level explanation generated.
+                  </div>
+                </v-card-text>
+              </v-card>
             </v-col>
 
             <v-col cols="12" sm="6" md="3">
@@ -387,46 +402,58 @@ watch([filter, sortBy, order], () => {
                 </tr>
               </thead>
               <tbody>
-                <tr
-                  v-for="row in results"
-                  :key="row.row_index"
-                  :class="
-                    row.prediction === 'Malicious' ? 'bg-red-lighten-5' : ''
-                  "
-                >
-                  <td class="font-weight-bold">#{{ row.row_index }}</td>
-                  <td>
-                    <v-chip
-                      :color="
-                        row.prediction === 'Malicious' ? 'error' : 'success'
-                      "
-                      size="small"
-                      variant="flat"
-                    >
-                      {{ row.prediction }}
-                    </v-chip>
-                  </td>
-                  <td>
-                    <span
-                      :class="
-                        row.confidence >= 0.85 && row.prediction === 'Malicious'
-                          ? 'text-error font-weight-bold'
-                          : ''
-                      "
-                    >
-                      {{ (row.confidence * 100).toFixed(1) }}%
-                    </span>
-                  </td>
-                  <td>
-                    <div
-                      v-for="risk in row.risk_indicators"
-                      :key="risk"
-                      class="text-caption"
-                    >
-                      • {{ risk }}
-                    </div>
-                  </td>
-                </tr>
+                <template v-for="row in results" :key="row.row_index">
+                  <tr
+                    :class="
+                      row.prediction === 'Malicious' ? 'bg-red-lighten-5' : ''
+                    "
+                    @click="row.expanded = !row.expanded"
+                    style="cursor: pointer"
+                  >
+                    <td class="font-weight-bold">#{{ row.row_index }}</td>
+
+                    <td>
+                      <v-chip
+                        :color="
+                          row.prediction === 'Malicious' ? 'error' : 'success'
+                        "
+                        size="small"
+                      >
+                        {{ row.prediction }}
+                      </v-chip>
+                    </td>
+
+                    <td>{{ (row.confidence * 100).toFixed(1) }}%</td>
+
+                    <td>
+                      <div v-for="risk in row.risk_indicators" :key="risk">
+                        • {{ risk }}
+                      </div>
+                    </td>
+                  </tr>
+
+                  <tr v-if="row.expanded">
+                    <td colspan="4">
+                      <v-card class="pa-4 bg-grey-lighten-4">
+                        <div v-if="results.explanation" class="mt-4">
+                          <v-divider class="mb-3" />
+
+                          <div class="text-subtitle-1 font-weight-bold mb-2">
+                            🧠 AI Explanation
+                          </div>
+
+                          <v-alert type="info" variant="tonal">
+                            {{ results.explanation }}
+                          </v-alert>
+                        </div>
+                        <div v-else class="text-caption text-medium-emphasis">
+                          No AI explanation generated (low risk or not
+                          prioritised).
+                        </div>
+                      </v-card>
+                    </td>
+                  </tr>
+                </template>
               </tbody>
             </v-table>
             <div class="d-flex justify-center mt-4">
