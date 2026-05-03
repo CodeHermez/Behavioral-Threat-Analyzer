@@ -18,41 +18,39 @@ To bridge the gap between complex AI and security analysts, the system incorpora
 
 Below is the expected field structure for data inputs:
 
-### File Burning/Transfer Operations
+### Identity & Background Information
 | Field Name | Type | Description |
 | :--- | :--- | :--- |
-| `num_burn_requests` | Quantity | Total burn requests |
-| `max_request_classification` | Categorical (1-4) | Highest classification level burned |
-| `avg_request_classification` | Float (1-4) | Average classification level |
-| `num_burn_requests_off_hours` | Quantity | Burn requests during unusual hours |
-| `total_burn_volume_mb` | Quantity | Total data volume burned (MB) |
-| `total_files_burned` | Quantity | Total number of files burned |
-| `burned_from_other` | Boolean (0/1) | Burned from non-assigned campus |
-| `burn_campuses` | Categorical/List | Campuses where burning occurred |
+| `employee_department` | Categorical | The department the employee works in (e.g., IT, Engineering, Finance) |
+| `employee_position` | Categorical | The employee's job title or tier |
+| `employee_seniority_years` | Integer | Number of years the employee has been with the company |
+| `employee_classification` | Integer | Security clearance or classification level |
+| `has_criminal_record` | Boolean (0/1) | Whether the employee has a known criminal history |
+| `is_contractor` | Boolean (0/1) | Flag indicating if the user is a contractor vs full-time |
+| `employee_campus` | Categorical | The primary campus assigned to the employee |
+| `has_medical_history` | Boolean (0/1) | Flag for medical history data (Ignored during inference) |
+| `employee_origin_country` | Categorical | Employee's country of origin (Ignored during inference) |
+| `has_foreign_citizenship` | Boolean (0/1) | Flag for foreign citizenship (Ignored during inference) |
 
-### Travel Information
+### Behavioral & Access Indicators
 | Field Name | Type | Description |
 | :--- | :--- | :--- |
-| `is_abroad` | Boolean (0/1) | Whether employee was abroad |
-| `trip_day_number` | Sequential (1,2,3…) | Day N of the trip |
-| `country_name` | Categorical | Destination country |
-| `is_hostile_country_trip` | Boolean (0/1) | Trip to hostile country |
-| `hostility_country_level` | Categorical/Numeric | Level of country hostility |
-| `is_official_trip` | Boolean (0/1) | Official business trip |
+| `total_printed_pages` | Integer | Total volume of pages printed by the user |
+| `num_printed_pages_off_hours` | Integer | Volume of pages printed outside standard business hours |
+| `total_files_burned` | Integer | Total files copied to external media (USB/Disk) |
+| `burned_from_other` | Boolean (0/1) | Files burned from a computer/campus not assigned to the user |
+| `is_abroad` | Boolean (0/1) | Flag indicating if the employee is currently traveling abroad |
+| `trip_day_number` | Float/Integer | The current day number of the active trip (0 if not traveling) |
+| `hostility_country_level` | Integer | Risk rating of the destination country if traveling |
+| `num_entries` | Integer | Number of times the user badged into the facility |
+| `num_unique_campus` | Integer | Number of distinct corporate campuses visited |
+| `late_exit_flag` | Boolean (0/1) | Flag indicating the user stayed unusually late |
+| `entry_during_weekend` | Boolean (0/1) | Flag indicating facility access during the weekend |
 
-### Access Control
+### Target Variable (For Training)
 | Field Name | Type | Description |
 | :--- | :--- | :--- |
-| `num_entries` | Quantity | Number of facility entries |
-| `num_exits` | Quantity | Number of facility exits |
-| `first_entry_time` | Datetime | First entry time of day |
-| `last_exit_time` | Datetime | Last exit time of day |
-| `total_presence_minutes` | Quantity | Total time spent in facility (minutes) |
-| `entered_during_night_hours` | Boolean (0/1) | Night entry flag |
-| `num_unique_campus` | Quantity | Number of different campuses visited |
-| `early_entry_flag` | Boolean (0/1) | Early entry indicator (before 06:00) |
-| `late_exit_flag` | Boolean (0/1) | Late exit indicator (after 22:00) |
-| `entry_during_weekend` | Boolean (0/1) | Weekend entry flag |
+| `is_malicious` | Boolean (0/1) | **0** = Normal Behavior, **1** = Malicious Insider Threat |
 
 ## Technology Stack
 **Backend (Machine Learning & API):**
