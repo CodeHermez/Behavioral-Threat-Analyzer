@@ -447,7 +447,7 @@ watch([filter, sortBy, order], () => {
                           <v-divider class="mb-3" />
 
                           <div class="text-subtitle-1 font-weight-bold mb-2">
-                            🧠 AI Explanation
+                            AI Explanation
                           </div>
 
                           <v-alert type="info" variant="tonal">
@@ -674,7 +674,7 @@ watch([filter, sortBy, order], () => {
 
             <v-card class="mt-4" elevation="1" border>
               <v-card-title class="text-subtitle-1 font-weight-bold">
-                🧠 AI Explanation
+                AI Explanation
               </v-card-title>
 
               <v-card-text class="text-body-2">
