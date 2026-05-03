@@ -126,25 +126,28 @@ def build_batch_payload(results):
 
 def generate_batch_explanation(summary, insights):
     prompt = f"""
-    You are a cybersecurity analyst explaining a system scan result to a non-technical manager.
+        You are a cybersecurity analyst explaining a system scan result to a non-technical manager.
 
-    Summary:
-    - Total Logs: {summary['total_scanned']}
-    - Threats Found: {summary['threats_found']}
-    - High Risk: {summary['high_risk']}
-    - Medium Risk: {summary['medium_risk']}
-    - Threat Percentage: {summary['threat_percentage']}%
+        Summary:
+        - Total Logs: {summary['total_scanned']}
+        - Threats Found: {summary['threats_found']}
+        - High Risk: {summary['high_risk']}
+        - Medium Risk: {summary['medium_risk']}
+        - Threat Percentage: {summary['threat_percentage']}%
 
-    Top Contributing Features:
-    {', '.join([f"{i['feature']} ({round(i['importance']*100)}%)" for i in insights])}
+        Top Contributing Features (from the AI model):
+        {', '.join([f"{i['feature']} ({round(i['importance']*100)}%)" for i in insights])}
 
-    Write a short, clear explanation (3–4 sentences) explaining:
-    - What this means overall
-    - Whether this is concerning
-    - What management should do next
+        Write a clear 3–4 sentence explanation that MUST include:
+        1. A brief interpretation of the overall threat level (is this concerning?)
+        2. A reference to the MOST important contributing features (not generic use the list above)
+        3. A mention of risk severity (e.g. high vs medium risk distribution)
+        4. A simple explanation of why the model flagged these behaviours
+        5. A recommended action for management
 
-    Keep it simple and non-technical.
-    """
+        Keep the explanation simple, non-technical, and directly tied to the model outputs.
+        Do NOT be vague. Be specific about the behaviours and their impact.
+        """
 
     try:
         response = client.models.generate_content(contents=prompt, model='gemini-3.1-flash-lite-preview')
