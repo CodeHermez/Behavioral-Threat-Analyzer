@@ -1,4 +1,4 @@
-# 🛡️ Aegis Threat Triage: AI-Powered Insider Threat Detection
+# Threat Detection System Prototype
 
 An AI-driven behavioral analysis dashboard designed to detect, triage, and explain potential insider threats within corporate environments. Traditional rule-based monitoring often fails to catch nuanced, anomalous employee behavior. This system uses a Machine Learning model to analyze organizational logs and classify user behavior as either malicious or normal. 
 
