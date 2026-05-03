@@ -19,6 +19,22 @@ const vuetify = createVuetify({
   icons: {
     defaultSet: "mdi", // Tells Vuetify to use the Material icons we imported
   },
+  themes: {
+    light: {
+      dark: false,
+      colors: {
+        success: "#22BB33",
+        error: "#D50000",
+      },
+    },
+    dark: {
+      dark: true,
+      colors: {
+        success: "#2E7D32",
+        error: "#950101", // That's a great deep red!
+      },
+    },
+  },
 });
 // ---------------------
 

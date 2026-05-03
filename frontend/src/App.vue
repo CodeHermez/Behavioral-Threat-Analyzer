@@ -1,10 +1,10 @@
 <script setup>
 import { ref, onMounted } from "vue";
 import Prototype_Analyzer_Comp from "@/components/Prototype_Analyzer_Comp.vue";
-const appBackgroundColor = ref("#f5f5f5");
+const appBackgroundColor = ref("#121212");
 const randomizeBackground = () => {
   const randomHue = Math.floor(Math.random() * 360);
-  appBackgroundColor.value = `hsl(${randomHue}, 70%, 85%)`;
+  appBackgroundColor.value = `hsl(${randomHue}, 30%, 15%)`;
 };
 onMounted(() => {
   randomizeBackground();
@@ -21,15 +21,6 @@ onMounted(() => {
     }"
   >
     <v-main>
-      <div class="d-flex justify-end pa-4 pb-0">
-        <v-btn
-          icon="mdi-palette"
-          variant="tonal"
-          color="primary"
-          @click="randomizeBackground"
-          title="Change Background Color"
-        ></v-btn>
-      </div>
       <Prototype_Analyzer_Comp />
     </v-main>
   </v-app>

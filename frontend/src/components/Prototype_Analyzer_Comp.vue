@@ -435,7 +435,7 @@ watch([filter, sortBy, order], () => {
                   <tr v-if="row.expanded">
                     <td colspan="4">
                       <v-card class="pa-4 bg-grey-lighten-4">
-                        <div v-if="results.explanation" class="mt-4">
+                        <div v-if="row.llm_explanation" class="mt-4">
                           <v-divider class="mb-3" />
 
                           <div class="text-subtitle-1 font-weight-bold mb-2">
@@ -443,7 +443,7 @@ watch([filter, sortBy, order], () => {
                           </div>
 
                           <v-alert type="info" variant="tonal">
-                            {{ results.explanation }}
+                            {{ row.llm_explanation }}
                           </v-alert>
                         </div>
                         <div v-else class="text-caption text-medium-emphasis">
@@ -467,10 +467,8 @@ watch([filter, sortBy, order], () => {
         </div>
 
         <div v-else-if="analysisType === 'single'">
-          <v-card class="mb-6 border" elevation="1">
-            <v-card-title
-              class="bg-blue-grey-lighten-5 d-flex align-center py-3"
-            >
+          <v-card class="pt-4 border" elevation="1">
+            <v-card-title class="d-flex align-center py-3">
               <v-avatar color="primary" size="48" class="mr-4">
                 <v-icon icon="mdi-account-tie" color="white" />
               </v-avatar>
@@ -625,6 +623,8 @@ watch([filter, sortBy, order], () => {
 
           <v-card
             :color="results.prediction === 'Malicious' ? 'error' : 'success'"
+            class="mt-4"
+            elevation="1"
             variant="tonal"
             border
           >
@@ -662,6 +662,17 @@ watch([filter, sortBy, order], () => {
                 {{ indicator }}
               </v-chip>
             </v-card-text>
+            <v-divider class="my-4" />
+
+            <v-card class="mt-4" elevation="1" border>
+              <v-card-title class="text-subtitle-1 font-weight-bold">
+                🧠 AI Explanation
+              </v-card-title>
+
+              <v-card-text class="text-body-2">
+                {{ results.llm_explanation }}
+              </v-card-text>
+            </v-card>
           </v-card>
         </div>
       </div>

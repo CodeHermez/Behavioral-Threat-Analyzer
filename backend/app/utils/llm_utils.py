@@ -1,6 +1,6 @@
 import os
 from google import genai
-model = genai.Client().models
+client = genai.Client(api_key=os.environ.get('GEMINI_API_KEY'))
 
 from collections import Counter
 def build_batch_summary(results):
@@ -82,15 +82,21 @@ def generate_threat_explanation(user_profile, prediction, confidence, risk_indic
     """
 
     try:
-        response = model.generate_content(prompt)
-        return response.text.strip()
-    except:
+        response = client.models.generate_content(
+        contents=prompt,
+        model='gemini-3.1-flash-lite-preview')
+        if response and hasattr(response, "text") and response.text:
+            return response.text.strip()
+        else:
+            return fallback_explanation(prediction, risk_indicators)
+    except Exception as e:
+        print("Gemini Error:", e)
         return fallback_explanation(prediction, risk_indicators)
     
 #save function that gets initiated when AI model request fails.
 def fallback_explanation(prediction, risk_indicators):
-    indicators = ", ".join([r["name"] for r in risk_indicators])
-    return f"This activity was classified as {prediction} due to the following indicators: {indicators}."
+    indicators = ", ".join(risk_indicators)
+    return f"This activity was classified as {prediction} due to: {indicators}."
 
 #transalte the risk so that its easily understandable to a manager
 def get_risk_level(confidence):
@@ -141,7 +147,7 @@ def generate_batch_explanation(summary, insights):
     """
 
     try:
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(contents=prompt, model='gemini-3.1-flash-lite-preview')
         return response.text.strip()
     except Exception as e:
         print(f"Batch Explanation Error: {e}")

@@ -1,6 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+
 import os
 import pandas as pd
 import matplotlib
@@ -69,7 +70,7 @@ class ModalSingle(APIView):
                 "seniority": data.get("employee_seniority_years", 0)
             }
 
-            explanation  = generate_threat_explanation(profile,pred_l,conf,risk_indicators)
+            llm_explanation  = generate_threat_explanation(profile,pred_l,conf,risk_indicators)
 
             # return the exact structure required in frontend integration
             return Response({
@@ -78,7 +79,7 @@ class ModalSingle(APIView):
                         "prediction": pred_l,
                         "confidence": round(conf, 4),
                         "risk_indicators": risk_indicators,
-                        "explanation":explanation 
+                        "llm_explanation":llm_explanation 
                     }
                 }, status=status.HTTP_200_OK)
         except Exception as e:
@@ -125,7 +126,6 @@ class ModalCSV(APIView):
             medium_risk = 0
             MAX_LLM_ROWS = 5
             llm_count = 0
-
             for i in range(len(x_pred)):
                 pred_val = int(preds[i])
                 conf = float(max(probs[i]))
@@ -161,17 +161,31 @@ class ModalCSV(APIView):
                         "risk_indicators": risk_indicators,
                         "explanation": None  
                 }
-                if label == "Malicious" and conf >= 0.85 and llm_count < MAX_LLM_ROWS:
-                    user_profile = {
-                        "department": "Unknown",  # optional improvement later
-                        "seniority": row.get("employee_seniority_years", 0)
-                    }
-
-                    result_row['explanation']  = generate_threat_explanation(user_profile,label,conf,risk_indicators)
-                    llm_count += 1
+                
 
                 results.append(result_row)
+            print('after loop')
 
+            #generate explanations only for the top risky rows
+            malicious_rows = [r for r in results if r["prediction"] == "Malicious"]
+
+            # highest risk first
+            malicious_rows.sort(key=lambda x: x["confidence"], reverse=True)
+
+            TOP_N = 2
+
+            for row in malicious_rows[:TOP_N]:
+                user_profile = {
+                    "department": "Unknown",
+                    "seniority": 0
+                }
+
+                row["explanation"] = generate_threat_explanation(
+                    user_profile,
+                    row["prediction"],
+                    row["confidence"],
+                    row["risk_indicators"]
+                )
             filter_type = request.query_params.get("filter", "all")
 
             if filter_type == "malicious":
@@ -208,7 +222,9 @@ class ModalCSV(APIView):
                     "threat_percentage": round((threats_found / len(df_raw)) * 100, 1) if results else 0,
                 }
             
+            print("start of llm explanation")
             summary['llm_explanation'] = generate_batch_explanation(summary, insights)
+            print("end of llm explanation")
 
             return Response({
                 "status": "success",
