@@ -124,8 +124,8 @@ class ModalCSV(APIView):
             threats_found = 0
             high_risk = 0
             medium_risk = 0
-            MAX_LLM_ROWS = 5
-            llm_count = 0
+            # MAX_LLM_ROWS = 5
+            # llm_count = 0
             for i in range(len(x_pred)):
                 pred_val = int(preds[i])
                 conf = float(max(probs[i]))
@@ -164,28 +164,7 @@ class ModalCSV(APIView):
                 
 
                 results.append(result_row)
-            print('after loop')
 
-            #generate explanations only for the top risky rows
-            malicious_rows = [r for r in results if r["prediction"] == "Malicious"]
-
-            # highest risk first
-            malicious_rows.sort(key=lambda x: x["confidence"], reverse=True)
-
-            TOP_N = 2
-
-            for row in malicious_rows[:TOP_N]:
-                user_profile = {
-                    "department": "Unknown",
-                    "seniority": 0
-                }
-
-                row["explanation"] = generate_threat_explanation(
-                    user_profile,
-                    row["prediction"],
-                    row["confidence"],
-                    row["risk_indicators"]
-                )
             filter_type = request.query_params.get("filter", "all")
 
             if filter_type == "malicious":

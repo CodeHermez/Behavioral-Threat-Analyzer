@@ -123,6 +123,11 @@ const analyzeData = async () => {
 
       if (actualFile) formData.append("csvFile", actualFile);
 
+      console.log(
+        `${url}modal-csv/?page=${page.value}&page_size=${itemsPerPage.value}&filter=${filter.value}&sort_by=${sortBy.value}&order=${order.value}`,
+        formData,
+      );
+
       const { data } = await axios.post(
         `${url}modal-csv/?page=${page.value}&page_size=${itemsPerPage.value}&filter=${filter.value}&sort_by=${sortBy.value}&order=${order.value}`,
         formData,
@@ -134,6 +139,7 @@ const analyzeData = async () => {
         insights.value = data.feature_insights;
         totalPages.value = data.pagination.total_pages;
         totalItems.value = data.pagination.total;
+        print(data);
       } else {
         throw new Error("Unexpected response structure");
       }
@@ -342,21 +348,6 @@ watch([filter, sortBy, order], () => {
                   </div>
                 </v-card-text>
               </v-card>
-              <v-card class="mb-6" elevation="2" border>
-                <v-card-title class="bg-grey-lighten-4">
-                  🧠 AI Threat Summary
-                </v-card-title>
-
-                <v-card-text>
-                  <div v-if="summary?.llm_explanation">
-                    {{ summary.llm_explanation }}
-                  </div>
-
-                  <div v-else class="text-caption text-medium-emphasis">
-                    No batch-level explanation generated.
-                  </div>
-                </v-card-text>
-              </v-card>
             </v-col>
 
             <v-col cols="12" sm="6" md="3">
@@ -380,6 +371,23 @@ watch([filter, sortBy, order], () => {
               </v-card>
             </v-col>
           </v-row>
+
+          <v-card class="mb-6" elevation="2" border>
+            <v-card-title class="bg-grey-lighten-4">
+              <v-icon class="me-2">mdi-brain</v-icon>
+              AI Threat Summary
+            </v-card-title>
+
+            <v-card-text>
+              <div v-if="summary?.llm_explanation">
+                {{ summary.llm_explanation }}
+              </div>
+
+              <div v-else class="text-caption text-medium-emphasis">
+                No batch-level explanation generated.
+              </div>
+            </v-card-text>
+          </v-card>
 
           <v-card elevation="2" border>
             <v-card-title class="bg-grey-lighten-4 d-flex align-center">
@@ -432,7 +440,7 @@ watch([filter, sortBy, order], () => {
                     </td>
                   </tr>
 
-                  <tr v-if="row.expanded">
+                  <!--<tr v-if="row.expanded">
                     <td colspan="4">
                       <v-card class="pa-4 bg-grey-lighten-4">
                         <div v-if="row.llm_explanation" class="mt-4">
@@ -452,7 +460,7 @@ watch([filter, sortBy, order], () => {
                         </div>
                       </v-card>
                     </td>
-                  </tr>
+                  </tr>-->
                 </template>
               </tbody>
             </v-table>
