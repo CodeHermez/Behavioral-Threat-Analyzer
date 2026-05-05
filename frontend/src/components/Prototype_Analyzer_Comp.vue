@@ -38,6 +38,7 @@ const resetForm = () => {
   results.value = null;
   summary.value = null;
   insights.value = null;
+  analysisId.value = null;
   page.value = 1;
 };
 
@@ -106,7 +107,33 @@ const sampleProfiles = {
 // Helper to format feature names for the UI
 const formatFeatureName = (name) =>
   name.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+const fetchResults = async () => {
+  if (!analysisId.value) return;
 
+  loading.value = true;
+
+  try {
+    const { data } = await axios.get(`${url}modal-csv/results/`, {
+      params: {
+        analysis_id: analysisId.value,
+        page: page.value,
+        page_size: itemsPerPage.value,
+        filter: filter.value,
+        sort_by: sortBy.value,
+        order: order.value,
+      },
+    });
+
+    results.value = data.data;
+    totalPages.value = data.pagination.total_pages;
+    totalItems.value = data.pagination.total;
+  } catch (err) {
+    console.error(err);
+    error.value = "Failed to fetch paginated results";
+  } finally {
+    loading.value = false;
+  }
+};
 const analyzeData = async () => {
   loading.value = true;
   error.value = null;
@@ -124,16 +151,18 @@ const analyzeData = async () => {
 
       if (actualFile) formData.append("csvFile", actualFile);
 
-      console.log(
-        `${url}modal-csv/?page=${page.value}&page_size=${itemsPerPage.value}&filter=${filter.value}&sort_by=${sortBy.value}&order=${order.value}`,
-        formData,
-      );
+      const { data } = await axios.post(`${url}modal-csv/analyze/`, formData);
 
-      const { data } = await axios.post(
-        `${url}modal-csv/?page=${page.value}&page_size=${itemsPerPage.value}&filter=${filter.value}&sort_by=${sortBy.value}&order=${order.value}`,
-        formData,
-      );
-      console.log(data);
+      if (data) {
+        analysisId.value = data.analysis_id;
+
+        results.value = data.data;
+        summary.value = data.summary;
+        insights.value = data.feature_insights;
+        totalPages.value = data.pagination.total_pages;
+
+        evaluation.value = data.summary.evaluation;
+      }
       if (data?.status === "success") {
         results.value = data.data;
         summary.value = data.summary;
@@ -173,13 +202,10 @@ const analyzeData = async () => {
 
 let isFetching = false;
 
-// watch([page, itemsPerPage, filter, sortBy, order], async () => {
-//   if (analysisType.value !== "csv" || isFetching) return;
-
-//   isFetching = true;
-//   await analyzeData();
-//   isFetching = false;
-// });
+watch([page, itemsPerPage, filter, sortBy, order], async () => {
+  if (analysisType.value !== "csv") return;
+  await fetchResults();
+});
 watch([filter, sortBy, order], () => {
   page.value = 1;
 });
