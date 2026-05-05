@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-
+from drf_spectacular.utils import extend_schema,OpenApiExample, OpenApiParameter
 import os
 import pandas as pd
 import matplotlib
@@ -24,7 +24,70 @@ except:
     print("UNSUCCESSFUL load of Random Forest Model into memory!")
 
 
-class ModalSingle(APIView):
+class ModalSampleView(APIView):
+    @extend_schema(
+        summary="Analyze a sample employee profile",
+        description="""
+        Performs machine learning inference on a sample employee record.
+
+        Returns:
+        - Prediction (Malicious / Normal)
+        - Confidence score
+        - Behavioural risk indicators
+        - AI-generated explanation (LLM)
+
+        Used for deep inspection of individual cases.
+        """,
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {
+                    "employee_seniority_years": {"type": "number"},
+                    "employee_classification": {"type": "number"},
+                    "total_files_burned": {"type": "number"},
+                    "entry_during_weekend": {"type": "number"},
+                    "late_exit_flag": {"type": "number"}
+                }
+            }
+        },
+        responses={
+            200: {
+                "type": "object",
+                "properties": {
+                    "status": {"type": "string"},
+                    "data": {
+                        "type": "object",
+                        "properties": {
+                            "prediction": {"type": "string"},
+                            "confidence": {"type": "number"},
+                            "risk_indicators": {
+                                "type": "array",
+                                "items": {"type": "string"}
+                            },
+                            "llm_explanation": {"type": "string"}
+                        }
+                    }
+                }
+            }
+        },
+        examples=[
+            OpenApiExample(
+                'Successful Response',
+                value={
+                    "status": "success",
+                    "data": {
+                        "prediction": "Malicious",
+                        "confidence": 0.83,
+                        "risk_indicators": [
+                            "USB activity",
+                            "Weekend access"
+                        ],
+                        "llm_explanation": "This activity shows unusual off-hours behaviour..."
+                    }
+                }
+            )
+        ]
+    )
     #post endpoint that gets called when a single sample user is tested
     #the values/scores, accruacy and risk indicators are returned as a response back to the frontend
     def post(self,request,format=None):
@@ -89,9 +152,87 @@ class ModalSingle(APIView):
                              'message':str(e)},
                              status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
-        return Response({'message':'Modal single'},status=status.HTTP_200_OK)
+        return Response({'message':'Modal sample'},status=status.HTTP_200_OK)
 
-class ModalCSV(APIView):
+class ModalCsvView(APIView):
+    @extend_schema(
+        summary="Analyze CSV dataset (bulk threat detection)",
+        description="""
+        Upload a CSV file to perform large-scale behavioural threat analysis.
+
+        Features:
+        - Batch prediction using ML model
+        - Risk classification per row
+        - Aggregated threat summary
+        - Feature importance insights
+        - AI-generated batch explanation
+
+        Supports:
+        - Filtering (malicious / normal)
+        - Sorting (confidence / prediction)
+        - Pagination
+
+        Performance optimised:
+        - AI explanations limited to top high-risk rows
+        """,
+        request={
+            "multipart/form-data": {
+                "type": "object",
+                "properties": {
+                    "csvFile": {
+                        "type": "string",
+                        "format": "binary"
+                    }
+                }
+            }
+        },
+        responses={
+            200: {
+                "type": "object",
+                "properties": {
+                    "status": {"type": "string"},
+                    "summary": {"type": "object"},
+                    "feature_insights": {"type": "array"},
+                    "data": {"type": "array"},
+                    "pagination": {"type": "object"}
+                }
+            }
+        },
+        parameters=[
+        OpenApiParameter(name='page', type=int, location=OpenApiParameter.QUERY),
+        OpenApiParameter(name='page_size', type=int, location=OpenApiParameter.QUERY),
+        OpenApiParameter(name='filter', type=str, location=OpenApiParameter.QUERY),
+        OpenApiParameter(name='sort_by', type=str, location=OpenApiParameter.QUERY),
+        OpenApiParameter(name='order', type=str, location=OpenApiParameter.QUERY),
+        ],
+        examples=[
+            OpenApiExample(
+                'CSV Analysis Response',
+                value={
+                    "status": "success",
+                    "summary": {
+                        "total_scanned": 1000,
+                        "threats_found": 74,
+                        "high_risk": 20,
+                        "medium_risk": 54,
+                        "threat_percentage": 7.4
+                    },
+                    "data": [
+                        {
+                            "row_index": 1,
+                            "prediction": "Malicious",
+                            "confidence": 0.87,
+                            "risk_indicators": ["USB activity"]
+                        }
+                    ],
+                    "pagination": {
+                        "page": 1,
+                        "total_pages": 10
+                    }
+                }
+            )
+        ]
+    )
     def post(self, request, format=None):
         file_data = request.FILES.get('csvFile')
 

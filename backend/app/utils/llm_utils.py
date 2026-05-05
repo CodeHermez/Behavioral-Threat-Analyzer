@@ -1,8 +1,9 @@
 import os
 from google import genai
-client = genai.Client(api_key=os.environ.get('GEMINI_API_KEY'))
-
+client = genai.Client(api_key=os.environ.get('GEMINI_API_KEY')) #api key for gemini configure
 from collections import Counter
+
+#batch csv request function for ai explanation generation
 def build_batch_summary(results):
     total = len(results)
     malicious = [r for r in results if r["prediction"] == "Malicious"]
@@ -58,7 +59,7 @@ def build_row_explanation_data(row):
         })
 
     return sorted(factors, key=lambda x: x["impact"], reverse=True)
-
+#sample user function for ai explanation
 def generate_threat_explanation(user_profile, prediction, confidence, risk_indicators):
 
     formatted_indicators = "\n".join([f"- {r}" for r in risk_indicators])
