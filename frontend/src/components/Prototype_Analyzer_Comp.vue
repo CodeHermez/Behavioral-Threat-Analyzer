@@ -202,7 +202,7 @@ const analyzeData = async () => {
 };
 
 let isFetching = false;
-
+//this is the watch function that makes a pagination request to the backend to load another page
 watch([page, itemsPerPage, filter, sortBy, order], async () => {
   if (analysisType.value !== "csv") return;
   await fetchResults();
