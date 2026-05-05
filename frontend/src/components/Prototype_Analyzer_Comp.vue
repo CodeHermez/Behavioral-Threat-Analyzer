@@ -163,14 +163,15 @@ const analyzeData = async () => {
 
         evaluation.value = data.summary.evaluation;
       }
-      if (data?.status === "success") {
-        results.value = data.data;
-        summary.value = data.summary;
-        insights.value = data.feature_insights;
-        totalPages.value = data.pagination.total_pages;
-        totalItems.value = data.pagination.total;
-        evaluation.value = data.summary.evaluation;
-      } else {
+      // if (data?.status === "success") {
+      //   results.value = data.data;
+      //   summary.value = data.summary;
+      //   insights.value = data.feature_insights;
+      //   totalPages.value = data.pagination.total_pages;
+      //   totalItems.value = data.pagination.total;
+      //   evaluation.value = data.summary.evaluation;
+      // }
+      else {
         throw new Error("Unexpected response structure");
       }
     } else if (sampleId.value) {
@@ -178,7 +179,7 @@ const analyzeData = async () => {
 
       const payload = sampleProfiles[sampleId.value].payload;
 
-      const { data } = await axios.post(`${url}modal-single/`, payload, {
+      const { data } = await axios.post(`${url}modal-sample/`, payload, {
         headers: { "Content-Type": "application/json" },
       });
 

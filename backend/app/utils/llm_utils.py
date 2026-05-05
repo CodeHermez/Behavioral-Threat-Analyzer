@@ -139,10 +139,10 @@ def generate_batch_explanation(summary, insights):
         Top Contributing Features (from the AI model):
         {', '.join([f"{i['feature']} ({round(i['importance']*100)}%)" for i in insights])}
 
-        Write a clear 3–4 sentence explanation that MUST include:
+        Write a clear 5–6 sentence explanation that MUST include:
         1. A brief interpretation of the overall threat level (is this concerning?)
-        2. A reference to the MOST important contributing features (not generic use the list above)
-        3. A mention of risk severity (e.g. high vs medium risk distribution)
+        2. A reference to the MOST important contributing features (not generic use the list above) and feature importance ranking
+        3. A mention of risk severity (e.g. high vs medium risk distribution) and produce a risk score breakdown
         4. A simple explanation of why the model flagged these behaviours
         5. A recommended action for management
 
