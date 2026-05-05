@@ -8,7 +8,7 @@ const loading = ref(false);
 const error = ref(null);
 const analysisType = ref(null);
 const url = import.meta.env.VITE_API_BASE_URL;
-
+const evaluation = ref(null);
 const results = ref(null);
 const summary = ref(null);
 const insights = ref(null);
@@ -19,6 +19,7 @@ const sortBy = ref("confidence");
 const order = ref("desc");
 const totalPages = ref(0);
 const totalItems = ref(0);
+const analysisId = ref(null);
 const sampleOptions = [
   { title: "Sample 1: Standard Employee (Normal)", value: "sample_normal" },
   {
@@ -139,7 +140,7 @@ const analyzeData = async () => {
         insights.value = data.feature_insights;
         totalPages.value = data.pagination.total_pages;
         totalItems.value = data.pagination.total;
-        print(data);
+        evaluation.value = data.summary.evaluation;
       } else {
         throw new Error("Unexpected response structure");
       }
@@ -172,13 +173,13 @@ const analyzeData = async () => {
 
 let isFetching = false;
 
-watch([page, itemsPerPage, filter, sortBy, order], async () => {
-  if (analysisType.value !== "csv" || isFetching) return;
+// watch([page, itemsPerPage, filter, sortBy, order], async () => {
+//   if (analysisType.value !== "csv" || isFetching) return;
 
-  isFetching = true;
-  await analyzeData();
-  isFetching = false;
-});
+//   isFetching = true;
+//   await analyzeData();
+//   isFetching = false;
+// });
 watch([filter, sortBy, order], () => {
   page.value = 1;
 });
@@ -472,6 +473,97 @@ watch([filter, sortBy, order], () => {
               />
             </div>
           </v-card>
+          <v-card class="mb-6" elevation="2" border>
+            <v-card-title class="bg-grey-lighten-4">
+              Model Evaluation
+            </v-card-title>
+
+            <v-card-text v-if="evaluation">
+              <v-row>
+                <v-col cols="6" md="3">
+                  <v-card class="pa-3 text-center">
+                    <div class="text-overline">True Positives</div>
+                    <div class="text-h5 font-weight-bold text-success">
+                      {{ evaluation.true_positives }}
+                    </div>
+                  </v-card>
+                </v-col>
+
+                <v-col cols="6" md="3">
+                  <v-card class="pa-3 text-center">
+                    <div class="text-overline">False Positives</div>
+                    <div class="text-h5 font-weight-bold text-warning">
+                      {{ evaluation.false_positives }}
+                    </div>
+                  </v-card>
+                </v-col>
+
+                <v-col cols="6" md="3">
+                  <v-card class="pa-3 text-center">
+                    <div class="text-overline">False Negatives</div>
+                    <div class="text-h5 font-weight-bold text-error">
+                      {{ evaluation.false_negatives }}
+                    </div>
+                  </v-card>
+                </v-col>
+
+                <v-col cols="6" md="3">
+                  <v-card class="pa-3 text-center">
+                    <div class="text-overline">True Negatives</div>
+                    <div class="text-h5 font-weight-bold text-primary">
+                      {{ evaluation.true_negatives }}
+                    </div>
+                  </v-card>
+                </v-col>
+              </v-row>
+
+              <v-divider class="my-4" />
+
+              <v-row>
+                <v-col cols="12" md="6">
+                  <v-alert type="info" variant="tonal">
+                    <strong>Precision:</strong>
+                    {{ (evaluation.precision * 100).toFixed(1) }}%
+                    <br />
+                    How many flagged threats were actually malicious.
+                  </v-alert>
+                </v-col>
+
+                <v-col cols="12" md="6">
+                  <v-alert type="info" variant="tonal">
+                    <strong>Recall:</strong>
+                    {{ (evaluation.recall * 100).toFixed(1) }}%
+                    <br />
+                    How many real threats the system successfully detected.
+                  </v-alert>
+                </v-col>
+              </v-row>
+            </v-card-text>
+          </v-card>
+          <v-alert type="warning" variant="tonal" class="mt-4">
+            <strong>Analysis Insight:</strong><br />
+
+            <span
+              v-if="evaluation.false_positives > evaluation.false_negatives"
+            >
+              The system tends to over-flag normal behavior as threats (higher
+              false positives). This may lead to unnecessary investigations.
+            </span>
+
+            <span
+              v-else-if="
+                evaluation.false_negatives > evaluation.false_positives
+              "
+            >
+              The system is missing some malicious activities (higher false
+              negatives), which poses a potential security risk.
+            </span>
+
+            <span v-else>
+              The system maintains a balanced detection performance, but further
+              tuning may still improve accuracy.
+            </span>
+          </v-alert>
         </div>
 
         <div v-else-if="analysisType === 'single'">

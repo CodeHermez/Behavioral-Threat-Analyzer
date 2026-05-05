@@ -12,6 +12,8 @@ from .utils.llm_utils import (
     generate_threat_explanation,
     generate_batch_explanation   
 )
+import uuid
+ANALYSIS_STORE={}
 
 #module try catch that fetches the model once its been tested on the user data
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -345,6 +347,30 @@ class ModalCsvView(APIView):
             print("start of llm explanation")
             summary['llm_explanation'] = generate_batch_explanation(summary, insights)
             print("end of llm explanation")
+            
+            tp = fp = fn = tn = 0 #definition of false-positive, true-positive... etc
+
+            for i in range(len(x_pred)):
+                actual = int(df_raw.iloc[i]["is_malicious"]) if "is_malicious" in df_raw.columns else None
+                predicted = int(preds[i])
+
+                if actual == 1 and predicted == 1:
+                    tp += 1
+                elif actual == 0 and predicted == 1:
+                    fp += 1
+                elif actual == 1 and predicted == 0:
+                    fn += 1
+                elif actual == 0 and predicted == 0:
+                    tn += 1
+
+                summary['evaluation']={
+                    "true_positives": tp,
+                    "false_positives": fp,
+                    "false_negatives": fn,
+                    "true_negatives": tn,
+                    "precision": round(tp / (tp + fp), 2) if (tp + fp) else 0,
+                    "recall": round(tp / (tp + fn), 2) if (tp + fn) else 0,
+                }
 
             return Response({
                 "status": "success",
@@ -361,3 +387,171 @@ class ModalCsvView(APIView):
 
         except Exception as e:
             return Response({'error': str(e)}, status=500)
+        
+class ModalCsvAnalyzeView(APIView):
+    def post(self, request, format=None):
+        file_data = request.FILES.get('csvFile')
+
+        if not file_data:
+            return Response({'error': 'File data not found'}, status=400)
+
+        try:
+            df_raw = pd.read_csv(file_data).drop_duplicates().dropna()
+
+            cols_to_drop = [
+                'employee_campus',
+                'has_medical_history',
+                'employee_origin_country',
+                'has_foreign_citizenship',
+                'is_contractor'
+            ]
+
+            df_clean = df_raw.drop(columns=[c for c in cols_to_drop if c in df_raw.columns], errors='ignore')
+
+            df_encoded = pd.get_dummies(
+                df_clean,
+                columns=['employee_department', 'employee_position'],
+                prefix='categ'
+            )
+
+            x_pred = df_encoded.drop(columns=['is_malicious', 'index'], errors='ignore')
+
+            preds = mod.predict(x_pred)
+            probs = mod.predict_proba(x_pred)
+
+            results = []
+            threats_found = high_risk = medium_risk = 0
+
+            for i in range(len(x_pred)):
+                pred_val = int(preds[i])
+                conf = float(max(probs[i]))
+
+                label = 'Malicious' if pred_val == 1 else 'Normal'
+
+                if label == 'Malicious':
+                    threats_found += 1
+                    if conf >= 0.85:
+                        high_risk += 1
+                    else:
+                        medium_risk += 1
+
+                row = x_pred.iloc[i]
+
+                risk_indicators = []
+                if row.get('total_files_burned', 0) > 0:
+                    risk_indicators.append("USB activity")
+                if row.get('entry_during_weekend') == 1:
+                    risk_indicators.append("Weekend access")
+                if row.get('late_exit_flag') == 1:
+                    risk_indicators.append("Late exit")
+
+                if not risk_indicators:
+                    risk_indicators.append("Normal behavior" if label == "Normal" else "Anomaly detected")
+
+                results.append({
+                    "row_index": i,
+                    "prediction": label,
+                    "confidence": round(conf, 4),
+                    "risk_indicators": risk_indicators
+                })
+
+            # summary
+            summary = {
+                "total_scanned": len(df_raw),
+                "threats_found": threats_found,
+                "high_risk": high_risk,
+                "medium_risk": medium_risk,
+                "threat_percentage": round((threats_found / len(df_raw)) * 100, 1)
+            }
+
+            # feature importance
+            global_scores = pd.Series(
+                mod.feature_importances_,
+                index=x_pred.columns
+            ).nlargest(3)
+
+            insights = [{"feature": str(k), "importance": float(v)} for k, v in global_scores.items()]
+
+            summary['llm_explanation'] = generate_batch_explanation(summary, insights)
+
+            # evaluation
+            tp = fp = fn = tn = 0
+            for i in range(len(x_pred)):
+                actual = int(df_raw.iloc[i]["is_malicious"]) if "is_malicious" in df_raw.columns else None
+                predicted = int(preds[i])
+
+                if actual == 1 and predicted == 1: tp += 1
+                elif actual == 0 and predicted == 1: fp += 1
+                elif actual == 1 and predicted == 0: fn += 1
+                elif actual == 0 and predicted == 0: tn += 1
+
+            summary["evaluation"] = {
+                "true_positives": tp,
+                "false_positives": fp,
+                "false_negatives": fn,
+                "true_negatives": tn,
+                "precision": round(tp / (tp + fp), 2) if (tp + fp) else 0,
+                "recall": round(tp / (tp + fn), 2) if (tp + fn) else 0,
+            }
+
+            # 🔥 store results
+            analysis_id = str(uuid.uuid4())
+            ANALYSIS_STORE[analysis_id] = results
+
+            # return first page only
+            paginator = Paginator(results, 10)
+            page_obj = paginator.get_page(1)
+
+            return Response({
+                "analysis_id": analysis_id,
+                "summary": summary,
+                "feature_insights": insights,
+                "data": list(page_obj),
+                "pagination": {
+                    "page": 1,
+                    "total_pages": paginator.num_pages
+                }
+            })
+
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
+
+class ModalCsvResultsView(APIView):
+    def get(self, request):
+        analysis_id = request.query_params.get("analysis_id")
+
+        if analysis_id not in ANALYSIS_STORE:
+            return Response({"error": "Invalid analysis_id"}, status=400)
+
+        results = ANALYSIS_STORE[analysis_id]
+
+        # filtering
+        filter_type = request.query_params.get("filter", "all")
+        if filter_type == "malicious":
+            results = [r for r in results if r["prediction"] == "Malicious"]
+        elif filter_type == "normal":
+            results = [r for r in results if r["prediction"] == "Normal"]
+
+        # sorting
+        sort_by = request.query_params.get("sort_by", "confidence")
+        order = request.query_params.get("order", "desc")
+        reverse = order == "desc"
+
+        results.sort(key=lambda x: x.get(sort_by, 0), reverse=reverse)
+
+        # pagination
+        page = int(request.query_params.get("page", 1))
+        page_size = int(request.query_params.get("page_size", 10))
+
+        paginator = Paginator(results, page_size)
+        page_obj = paginator.get_page(page)
+
+        return Response({
+            "data": list(page_obj),
+            "pagination": {
+                "page": page,
+                "page_size": page_size,
+                "total": paginator.count,
+                "total_pages": paginator.num_pages
+            }
+        })
