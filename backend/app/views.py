@@ -2,29 +2,21 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from drf_spectacular.utils import extend_schema,OpenApiExample, OpenApiParameter
-import os
 import pandas as pd
 import matplotlib
 matplotlib.use('Agg') 
-import joblib
 from django.core.paginator import Paginator
 from .utils.llm_utils import (
     generate_threat_explanation,
     generate_batch_explanation   
 )
+from .utils.data_processing_util import(
+    build_results_dataframe,
+    build_risk_indicators,
+    preprocess_dataframe,
+    MODEL_FEATURES, 
+    MODEL)
 import uuid
-ANALYSIS_STORE={}
-
-#module try catch that fetches the model once its been tested on the user data
-CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(CURRENT_DIR, 'RForestModal.pkl')
-try:
-    mod = joblib.load(MODEL_PATH) #this is the model thats used to test 
-    print("SUCCESSFULY loaded Random Forest Model into memory!")
-except:
-    mod=None #if the file is not found in the same directory as this view file it will retrieve None value
-    print("UNSUCCESSFUL load of Random Forest Model into memory!")
-
 
 class ModalSampleView(APIView):
     @extend_schema(
@@ -98,18 +90,18 @@ class ModalSampleView(APIView):
             df = pd.DataFrame([data]) #turn into a dataframe
             df = df.drop(columns=['index','is_malicious'], errors='ignore') #drop unneeded fields 'index' and 'is_malicious'
             df_encoded = pd.get_dummies(df)
-            if mod and hasattr(mod,"feature_names_in_"):
-                model_features=list(mod.feature_names_in_)
+            if MODEL and hasattr(MODEL,"feature_names_in_"):
+                model_features=list(MODEL.feature_names_in_)
                 for col in model_features:
                     if col not in df_encoded.columns:
                         df_encoded[col]=0
                 df_encoded=df_encoded[model_features]
 
-            if mod:
-                pred = int(mod.predict(df_encoded)[0]) #retrieve the first value in the after values are dripped with is the id
-                conf=float(max(mod.predict_proba(df_encoded)[0]))
+            if MODEL:
+                pred = int(MODEL.predict(df_encoded)[0]) #retrieve the first value in the after values are dripped with is the id
+                conf=float(max(MODEL.predict_proba(df_encoded)[0]))
             else:
-                #default confidence values are given if mod doesnt contain anything
+                #default confidence values are given if MODEL doesnt contain anything
                 pc= 1 if data.get('late_exit_flag')==1 else 0
                 conf = 0.75
             
@@ -260,8 +252,8 @@ class ModalCsvView(APIView):
                 prefix='categ'
             )
             x_pred = df_encoded.drop(columns=['is_malicious', 'index'], errors='ignore')
-            preds = mod.predict(x_pred)
-            probs = mod.predict_proba(x_pred)
+            preds = MODEL.predict(x_pred)
+            probs = MODEL.predict_proba(x_pred)
 
             results = []
             threats_found = 0
@@ -328,7 +320,7 @@ class ModalCsvView(APIView):
             page_obj = paginator.get_page(page)
 
             global_scores = pd.Series(
-                mod.feature_importances_,
+                MODEL.feature_importances_,
                 index=x_pred.columns
             ).nlargest(3)
 
@@ -416,8 +408,8 @@ class ModalCsvAnalyzeView(APIView):
 
             x_pred = df_encoded.drop(columns=['is_malicious', 'index'], errors='ignore')
 
-            preds = mod.predict(x_pred)
-            probs = mod.predict_proba(x_pred)
+            preds = MODEL.predict(x_pred)
+            probs = MODEL.predict_proba(x_pred)
 
             results = []
             threats_found = high_risk = medium_risk = 0
@@ -466,7 +458,7 @@ class ModalCsvAnalyzeView(APIView):
 
             # feature importance
             global_scores = pd.Series(
-                mod.feature_importances_,
+                MODEL.feature_importances_,
                 index=x_pred.columns
             ).nlargest(3)
 

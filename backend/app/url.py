@@ -9,6 +9,7 @@ urlpatterns = [
     path("modal-csv/", views.ModalCsvView.as_view()),
     path("modal-csv/results/", views.ModalCsvResultsView.as_view()),
     path("modal-csv/analyze/", views.ModalCsvAnalyzeView.as_view()),
+    path("modal-csv/status/", views.ModalCsvResultsView.as_view()),
     path('schema/', SpectacularAPIView.as_view(), name='schema'),
     path('docs/', SpectacularSwaggerView.as_view(url_name='schema')),
 ]
