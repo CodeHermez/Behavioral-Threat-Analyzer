@@ -20,6 +20,8 @@ const order = ref("desc");
 const totalPages = ref(0);
 const totalItems = ref(0);
 const analysisId = ref(null);
+const analysisisId = ref(null);
+const loadingResults = ref(false);
 const sampleOptions = [
   { title: "Sample 1: Standard Employee (Normal)", value: "sample_normal" },
   {
@@ -38,7 +40,10 @@ const resetForm = () => {
   results.value = null;
   summary.value = null;
   insights.value = null;
+  evaluation.value = null;
   analysisId.value = null;
+  totalPages.value = 0;
+  totalItems.value = 0;
   page.value = 1;
 };
 
@@ -129,7 +134,13 @@ const fetchResults = async () => {
     totalItems.value = data.pagination.total;
   } catch (err) {
     console.error(err);
-    error.value = "Failed to fetch paginated results";
+    if (err.response?.data?.error === "Analysis expired or invalid") {
+      error.value = "Analysis session expired. Please upload again.";
+      results.value = null;
+      analysisId.value = null;
+      return;
+    }
+    error.value = err.response?.data?.error || "Failed to fetch results";
   } finally {
     loading.value = false;
   }
@@ -155,12 +166,11 @@ const analyzeData = async () => {
 
       if (data) {
         analysisId.value = data.analysis_id;
-
         results.value = data.data;
         summary.value = data.summary;
         insights.value = data.feature_insights;
         totalPages.value = data.pagination.total_pages;
-
+        totalItems.value = data.pagination.total_pages;
         evaluation.value = data.summary.evaluation;
       }
       // if (data?.status === "success") {
@@ -204,7 +214,10 @@ const analyzeData = async () => {
 let isFetching = false;
 //this is the watch function that makes a pagination request to the backend to load another page
 watch([page, itemsPerPage, filter, sortBy, order], async () => {
-  if (analysisType.value !== "csv") return;
+  if (analysisType.value !== "csv" || !analysisId.value) {
+    return;
+  }
+
   await fetchResults();
 });
 watch([filter, sortBy, order], () => {
@@ -426,14 +439,14 @@ watch([filter, sortBy, order], () => {
               ></v-icon>
               Triage Roster (Sorted by Risk)
             </v-card-title>
-            <v-table density="comfortable" hover>
+            <v-table density="comfortable" hover :loading="loadingResults">
               <thead>
                 <tr>
                   <th class="text-left font-weight-bold">Row ID</th>
                   <th class="text-left font-weight-bold">ML Classification</th>
                   <th class="text-left font-weight-bold">Confidence</th>
                   <th class="text-left font-weight-bold">
-                    Key Risk Indicators
+                    Explainability Signals
                   </th>
                 </tr>
               </thead>
@@ -468,27 +481,62 @@ watch([filter, sortBy, order], () => {
                     </td>
                   </tr>
 
-                  <!--<tr v-if="row.expanded">
+                  <tr v-if="row.expanded">
                     <td colspan="4">
-                      <v-card class="pa-4 bg-grey-lighten-4">
-                        <div v-if="row.llm_explanation" class="mt-4">
-                          <v-divider class="mb-3" />
-
+                      <v-card class="pa-4 bg-grey-lighten-5" border>
+                        <!-- RULE-BASED EXPLANATION -->
+                        <div class="mb-4">
                           <div class="text-subtitle-1 font-weight-bold mb-2">
-                            AI Explanation
+                            Rule-Based Security Analysis
                           </div>
 
-                          <v-alert type="info" variant="tonal">
-                            {{ row.llm_explanation }}
+                          <v-alert type="warning" variant="tonal">
+                            <div
+                              v-for="(
+                                explanation, index
+                              ) in row.rule_based_explanations"
+                              :key="index"
+                            >
+                              • {{ explanation }}
+                            </div>
                           </v-alert>
                         </div>
-                        <div v-else class="text-caption text-medium-emphasis">
-                          No AI explanation generated (low risk or not
-                          prioritised).
+
+                        <!-- FEATURE CONTRIBUTIONS -->
+                        <div class="mb-4">
+                          <div class="text-subtitle-1 font-weight-bold mb-3">
+                            AI Decision Drivers
+                          </div>
+
+                          <v-row dense>
+                            <v-col
+                              v-for="feature in row.feature_contributions"
+                              :key="feature.feature"
+                              cols="12"
+                              md="4"
+                            >
+                              <v-card variant="outlined" class="pa-3 h-100">
+                                <div class="text-caption text-medium-emphasis">
+                                  {{ formatFeatureName(feature.feature) }}
+                                </div>
+
+                                <div class="text-h6 font-weight-bold mt-1">
+                                  {{ feature.impact }}
+                                </div>
+
+                                <v-progress-linear
+                                  :model-value="feature.percentage"
+                                  rounded
+                                  height="8"
+                                  class="mt-2"
+                                />
+                              </v-card>
+                            </v-col>
+                          </v-row>
                         </div>
                       </v-card>
                     </td>
-                  </tr>-->
+                  </tr>
                 </template>
               </tbody>
             </v-table>

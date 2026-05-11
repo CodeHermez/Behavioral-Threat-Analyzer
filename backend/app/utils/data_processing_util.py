@@ -6,13 +6,13 @@ ANALYSIS_STORE={}
 
 #module try catch that fetches the model once its been tested on the user data
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(CURRENT_DIR, 'RForestModal.pkl')
+MODEL_PATH = os.path.join(CURRENT_DIR, '../RForestModal.pkl')
 try:
-    mod = joblib.load(MODEL_PATH) #this is the model thats used to test
-    MODEL_FEATURES = list(mod.feature_names_in_) 
+    MODEL = joblib.load(MODEL_PATH) #this is the model thats used to test
+    MODEL_FEATURES = list(MODEL.feature_names_in_) 
     print("SUCCESSFULY loaded Random Forest Model into memory!")
 except:
-    mod=None #if the file is not found in the same directory as this view file it will retrieve None value
+    MODEL=None #if the file is not found in the same directory as this view file it will retrieve None value
     MODEL_FEATURES = []
     print("FAILED in loading model")
 
