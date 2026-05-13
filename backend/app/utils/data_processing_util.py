@@ -6,8 +6,9 @@ ANALYSIS_STORE={}
 
 #module try catch that fetches the model once its been tested on the user data
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(CURRENT_DIR, '../models/RForestModal.pkl')
+MODEL_PATH = os.path.normpath(os.path.join(CURRENT_DIR, '..','models','RForestModel.pkl'))
 try:
+    print(MODEL_PATH)
     MODEL = joblib.load(MODEL_PATH) #this is the model thats used to test
     MODEL_FEATURES = list(MODEL.feature_names_in_) 
     print("SUCCESSFULY loaded Random Forest Model into memory!")
