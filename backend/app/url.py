@@ -6,7 +6,6 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 # routes for the api and documentation
 urlpatterns = [
     path("modal-sample/", views.ModalSampleView.as_view()),
-    path("modal-csv/", views.ModalCsvView.as_view()),
     path("modal-csv/results/", views.ModalCsvResultsView.as_view()),
     path("modal-csv/analyze/", views.ModalCsvAnalyzeView.as_view()),
     path('schema/', SpectacularAPIView.as_view(), name='schema'),
