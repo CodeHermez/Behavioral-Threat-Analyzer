@@ -390,14 +390,17 @@ class ModalCsvAnalyzeView(APIView):
             top_threat_rows = (results_df[results_df["prediction"] == "Malicious"].sort_values(by="confidence", ascending=False).head(5).to_dict("records"))
             summary["llm_explanation"] = generate_batch_explanation(summary,insights, top_threat_rows)
             cached_llm = cache.get(llm_cache_key)
+            analysis_id = str(uuid.uuid4())
+
             if cached_llm:
                 summary["llm_explanation"] = cached_llm
             elif not summary['llm_explanation'] == 'Batch explanation unavailable.':
                 llm_explanation = generate_batch_explanation(summary, insights)
                 summary["llm_explanation"] = llm_explanation
                 cache.set(llm_cache_key,llm_explanation,timeout=86400)
+                cache.set(analysis_id,results_df.to_dict("records"),timeout=3600)
+                cache.set(file_sha,response,timeout=3600)
             
-            analysis_id = str(uuid.uuid4())
             page_size = 10
             paginator = Paginator(results_df.to_dict("records"),page_size)
             page_obj = paginator.get_page(1)
