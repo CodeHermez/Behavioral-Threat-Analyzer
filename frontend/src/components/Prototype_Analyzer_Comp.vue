@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, computed } from "vue";
+import { ref, watch, computed, onMounted} from "vue";
 import axios from "axios";
 
 const file = ref(null);
