@@ -110,7 +110,7 @@ const sampleProfiles = {
 };
 
 // Helper to format feature names for the UI
-const formatFeatureName = async (name) => {
+const formatFeatureName = (name) => {
   console.log(name);
   return name.replaceAll("_", " ").replace(/\b\w/g, (l) => l.toUpperCase());
 };
@@ -175,6 +175,7 @@ const analyzeData = async () => {
         totalPages.value = data.pagination.total_pages;
         totalItems.value = data.pagination.total_pages;
         evaluation.value = data.summary.evaluation;
+        localStorage.setItem("analysis_id", data.analysis_id);
       }
       // if (data?.status === "success") {
       //   results.value = data.data;
@@ -215,6 +216,16 @@ const analyzeData = async () => {
 };
 
 let isFetching = false;
+onMounted(async () => {
+  const savedId = localStorage.getItem("analysis_id");
+
+  if (savedId) {
+    analysisId.value = savedId;
+    analysisType.value = "csv";
+
+    await fetchResults();
+  }
+});
 //this is the watch function that makes a pagination request to the backend to load another page
 watch([page, itemsPerPage, filter, sortBy, order], async () => {
   if (analysisType.value !== "csv" || !analysisId.value) {
@@ -226,6 +237,11 @@ watch([page, itemsPerPage, filter, sortBy, order], async () => {
 watch([filter, sortBy, order], () => {
   page.value = 1;
 });
+const getImpactColor = (value) => {
+  if (value >= 70) return "error"; // red
+  if (value >= 40) return "warning"; // orange
+  return "success"; // green
+};
 </script>
 
 <template>
@@ -506,7 +522,7 @@ watch([filter, sortBy, order], () => {
                           </v-alert>
                         </div>
 
-                        <!-- FEATURE CONTRIBUTIONS -->
+                        <!-- feature based contributions -->
                         <div class="mb-4">
                           <div class="text-subtitle-1 font-weight-bold mb-3">
                             AI Decision Drivers
@@ -519,21 +535,66 @@ watch([filter, sortBy, order], () => {
                               cols="12"
                               md="4"
                             >
-                              <v-card variant="outlined" class="pa-3 h-100">
-                                <div class="text-caption text-medium-emphasis">
-                                  {{ feature.feature }}
+                              <v-card
+                                variant="outlined"
+                                class="pa-4 h-100 rounded-lg"
+                              >
+                                <!-- Feature Name -->
+                                <div class="text-subtitle-1 font-weight-bold">
+                                  {{ formatFeatureName(feature.feature) }}
                                 </div>
 
-                                <div class="text-h6 font-weight-bold mt-1">
+                                <!-- Impact Description -->
+                                <div
+                                  class="text-body-2 text-medium-emphasis mt-1"
+                                >
                                   {{ feature.impact }}
                                 </div>
-                                <p>{{ feature }}</p>
+
+                                <!-- Percentage + Severity -->
+                                <div
+                                  class="d-flex justify-space-between align-center mt-4"
+                                >
+                                  <span class="text-caption font-weight-bold">
+                                    Contribution Score
+                                  </span>
+
+                                  <v-chip
+                                    :color="getImpactColor(feature.value)"
+                                    size="small"
+                                    variant="flat"
+                                  >
+                                    {{ feature.value }}%
+                                  </v-chip>
+                                </div>
+
+                                <!-- Progress Bar -->
                                 <v-progress-linear
                                   :model-value="feature.value"
+                                  :color="getImpactColor(feature.value)"
                                   rounded
-                                  height="8"
+                                  height="10"
                                   class="mt-2"
                                 />
+
+                                <!-- Severity Label -->
+                                <div
+                                  class="text-caption font-weight-bold mt-2"
+                                  :class="{
+                                    'text-error': feature.value >= 70,
+                                    'text-warning':
+                                      feature.value >= 40 && feature.value < 70,
+                                    'text-success': feature.value < 40,
+                                  }"
+                                >
+                                  {{
+                                    feature.value >= 70
+                                      ? "High Impact"
+                                      : feature.value >= 40
+                                        ? "Moderate Impact"
+                                        : "Low Impact"
+                                  }}
+                                </div>
                               </v-card>
                             </v-col>
                           </v-row>
