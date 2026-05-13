@@ -125,7 +125,23 @@ def build_batch_payload(results):
         "risk_distribution": distribution
     }
 
-def generate_batch_explanation(summary, insights):
+def generate_batch_explanation(summary, insights,top_threat_rows):
+    top_row_context = ""
+    for idx, row in enumerate(top_threat_rows, start=1):
+        indicators = ", ".join(row["risk_indicators"])
+        rules = ", ".join(row["rule_based_explanations"])
+        top_features = ", ".join([
+            f"{f['feature']} ({f['impact']})"
+            for f in row["feature_contributions"][:3]
+        ])
+        top_row_context += f"""
+        Threat #{idx}
+        - Confidence: {row['confidence'] * 100:.1f}%
+        - Indicators: {indicators}
+        - Rule Explanations: {rules}
+        - Top Feature Drivers: {top_features}
+        """
+    
     prompt = f"""
         You are a cybersecurity analyst explaining a system scan result to a non-technical manager.
 
@@ -138,6 +154,9 @@ def generate_batch_explanation(summary, insights):
 
         Top Contributing Features (from the AI model):
         {', '.join([f"{i['feature']} ({round(i['importance']*100)}%)" for i in insights])}
+        
+        Most Critical Threat Cases:
+        {top_row_context}
 
         Write a clear 5–6 sentence explanation that MUST include:
         1. A brief interpretation of the overall threat level (is this concerning?)
@@ -151,6 +170,7 @@ def generate_batch_explanation(summary, insights):
         """
 
     try:
+        print(prompt)
         response = client.models.generate_content(contents=prompt, model='gemini-3.1-flash-lite-preview')
         return response.text.strip()
     except Exception as e:
