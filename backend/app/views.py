@@ -25,6 +25,8 @@ from .utils.data_processing_util import(
     ANALYSIS_STORE,
     MODEL)
 import uuid
+import hashlib
+import json
 
 class ModalSampleView(APIView):
 
@@ -295,14 +297,25 @@ class ModalCsvResultsView(APIView):
 #csv analysis
 class ModalCsvAnalyzeView(APIView):
     def post(self, request, format=None):
-        file_data = request.FILES.get('csvFile')
-        if not file_data:
+        file = request.FILES.get('csvFile')
+        
+        if not file:
             return Response({
                 'error': 'CSV file not provided'
             }, status=400)
+        
+        file_b = file.read()
+        file_sha=hashlib.md5(file_b).hexdigest()
+        cache_analysis = cache.get(file_sha)
+        llm_cache_key = f"llm:{file_sha}"
+        file.seek(0)
+        
+        if cache_analysis and llm_cache_key:
+            return Response(cache_analysis)
+
 
         try:
-            df_raw = pd.read_csv(file_data)
+            df_raw = pd.read_csv(file)
             df_raw = (df_raw.drop_duplicates().dropna().reset_index(drop=True))
             x_pred = preprocess_dataframe(df_raw)
             #setting up raw model prediction layer
@@ -337,6 +350,7 @@ class ModalCsvAnalyzeView(APIView):
                     "feature_contributions":explainability["feature_contributions"],
                     "human_readable_explanation": human_readable_explanation
                 })
+            print('end of loop')
             results_df = pd.DataFrame(results)
             threats_found = int(np.sum(preds == 1))
             confidences = np.max(probs, axis=1)
@@ -375,13 +389,19 @@ class ModalCsvAnalyzeView(APIView):
             # LLM Intelligence Layer
             top_threat_rows = (results_df[results_df["prediction"] == "Malicious"].sort_values(by="confidence", ascending=False).head(5).to_dict("records"))
             summary["llm_explanation"] = generate_batch_explanation(summary,insights, top_threat_rows)
+            cached_llm = cache.get(llm_cache_key)
+            if cached_llm:
+                summary["llm_explanation"] = cached_llm
+            elif not summary['llm_explanation'] == 'Batch explanation unavailable.':
+                llm_explanation = generate_batch_explanation(summary, insights)
+                summary["llm_explanation"] = llm_explanation
+                cache.set(llm_cache_key,llm_explanation,timeout=86400)
+            
             analysis_id = str(uuid.uuid4())
-            cache.set(analysis_id,results_df.to_dict("records"),timeout=3600)
             page_size = 10
             paginator = Paginator(results_df.to_dict("records"),page_size)
             page_obj = paginator.get_page(1)
-            
-            return Response({
+            response ={
                 "status": "success",
                 "analysis_id": analysis_id,
                 "summary": summary,
@@ -393,7 +413,11 @@ class ModalCsvAnalyzeView(APIView):
                     "total": paginator.count,
                     "total_pages": paginator.num_pages
                 }
-            })
+            }
+            cache.set(analysis_id,results_df.to_dict("records"),timeout=3600)
+            cache.set(file_sha,response,timeout=3600)
+            
+            return Response(response)
         except Exception as e:
             return Response({
                 "error": str(e)
