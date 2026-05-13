@@ -110,8 +110,11 @@ const sampleProfiles = {
 };
 
 // Helper to format feature names for the UI
-const formatFeatureName = (name) =>
-  name.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+const formatFeatureName = async (name) => {
+  console.log(name);
+  return name.replaceAll("_", " ").replace(/\b\w/g, (l) => l.toUpperCase());
+};
+
 const fetchResults = async () => {
   if (!analysisId.value) return;
 
@@ -496,6 +499,7 @@ watch([filter, sortBy, order], () => {
                                 explanation, index
                               ) in row.rule_based_explanations"
                               :key="index"
+                              class="mb-2"
                             >
                               • {{ explanation }}
                             </div>
@@ -517,15 +521,15 @@ watch([filter, sortBy, order], () => {
                             >
                               <v-card variant="outlined" class="pa-3 h-100">
                                 <div class="text-caption text-medium-emphasis">
-                                  {{ formatFeatureName(feature.feature) }}
+                                  {{ feature.feature }}
                                 </div>
 
                                 <div class="text-h6 font-weight-bold mt-1">
                                   {{ feature.impact }}
                                 </div>
-
+                                <p>{{ feature }}</p>
                                 <v-progress-linear
-                                  :model-value="feature.percentage"
+                                  :model-value="feature.value"
                                   rounded
                                   height="8"
                                   class="mt-2"
