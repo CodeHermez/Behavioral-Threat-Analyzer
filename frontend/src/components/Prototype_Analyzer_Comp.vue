@@ -779,9 +779,7 @@ const getImpactColor = (value) => {
                             sampleProfiles[sampleId].payload.total_files_burned
                           }}
                         </div>
-                        <div class="text-caption text-medium-emphasis">
-                          Files Burned (USB)
-                        </div>
+                        <div class="text-subtitle-1">Files Burned (USB)</div>
                       </v-card>
                     </v-col>
                     <v-col cols="6">
@@ -795,9 +793,7 @@ const getImpactColor = (value) => {
                               .num_printed_pages_off_hours
                           }}
                         </div>
-                        <div class="text-caption text-medium-emphasis">
-                          Off-Hours Prints
-                        </div>
+                        <div class="text-subtitle-1">Off-Hours Prints</div>
                       </v-card>
                     </v-col>
                     <v-col cols="6">
@@ -820,9 +816,7 @@ const getImpactColor = (value) => {
                               : "No"
                           }}
                         </div>
-                        <div class="text-caption text-medium-emphasis">
-                          Weekend Entry
-                        </div>
+                        <div class="text-subtitle-1">Weekend Entry</div>
                       </v-card>
                     </v-col>
                     <v-col cols="6">
@@ -844,9 +838,7 @@ const getImpactColor = (value) => {
                               : "No"
                           }}
                         </div>
-                        <div class="text-caption text-medium-emphasis">
-                          Late Exit
-                        </div>
+                        <div class="text-subtitle-1">Late Exit</div>
                       </v-card>
                     </v-col>
                   </v-row>
