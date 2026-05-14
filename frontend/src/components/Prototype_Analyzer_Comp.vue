@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, computed, onMounted} from "vue";
+import { ref, watch, computed, onMounted } from "vue";
 import axios from "axios";
 
 const file = ref(null);
@@ -541,19 +541,13 @@ const getImpactColor = (value) => {
                               >
                                 <!-- Feature Name -->
                                 <div class="text-subtitle-1 font-weight-bold">
-                                  {{ formatFeatureName(feature.feature) }}
+                                  {{
+                                    `${formatFeatureName(feature.feature)}: ${feature.impact}`
+                                  }}
                                 </div>
 
-                                <!-- Impact Description -->
                                 <div
-                                  class="text-body-2 text-medium-emphasis mt-1"
-                                >
-                                  {{ feature.impact }}
-                                </div>
-
-                                <!-- Percentage + Severity -->
-                                <div
-                                  class="d-flex justify-space-between align-center mt-4"
+                                  class="d-flex justify-space-between align-center mt-1"
                                 >
                                   <span class="text-caption font-weight-bold">
                                     Contribution Score

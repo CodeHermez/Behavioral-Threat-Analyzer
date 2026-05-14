@@ -388,12 +388,11 @@ class ModalCsvAnalyzeView(APIView):
                 }
             # LLM Intelligence Layer
             top_threat_rows = (results_df[results_df["prediction"] == "Malicious"].sort_values(by="confidence", ascending=False).head(5).to_dict("records"))
-            summary["llm_explanation"] = generate_batch_explanation(summary,insights, top_threat_rows)
+            llm_explanation= generate_batch_explanation(summary,insights, top_threat_rows)
             cached_llm = cache.get(llm_cache_key)
             if cached_llm:
                 summary["llm_explanation"] = cached_llm
-            elif not summary['llm_explanation'] == 'Batch explanation unavailable.':
-                llm_explanation = generate_batch_explanation(summary, insights)
+            elif not llm_explanation == 'Batch explanation unavailable.':
                 summary["llm_explanation"] = llm_explanation
                 cache.set(llm_cache_key,llm_explanation,timeout=86400)
             
