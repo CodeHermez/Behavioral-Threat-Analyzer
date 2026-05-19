@@ -75,8 +75,12 @@ cd backend
 python -m venv proto_env
 .\proto_env\Scripts\activate
 
+# Execute migrations
+python manage.py makemigrations
+python manage.py migrate
+
 # Install requirements
-pip install django djangorestframework pandas scikit-learn matplotlib joblib django-cors-headers
+pip install -r requirements.txt
 
 # Run the development server
 python manage.py runserver
