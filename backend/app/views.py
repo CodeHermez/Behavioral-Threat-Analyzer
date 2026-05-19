@@ -1,7 +1,11 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
-from drf_spectacular.utils import extend_schema,OpenApiExample, OpenApiParameter
+from drf_spectacular.utils import (
+    extend_schema,
+    OpenApiExample,
+    OpenApiParameter,
+    OpenApiResponse
+)
 import pandas as pd
 import numpy as np
 import matplotlib
@@ -26,32 +30,49 @@ from .utils.data_processing_util import(
     MODEL)
 import uuid
 import hashlib
-import json
 
 class ModalSampleView(APIView):
 
     @extend_schema(
-        summary="Analyze a sample employee profile",
+        tags=["Threat Analysis"],
+        summary="Analyze a single employee activity profile",
         description="""
-        Performs machine learning inference on a sample employee record.
+        Performs machine learning threat detection on a single employee activity record.
 
-        Returns:
-        - Prediction (Malicious / Normal)
-        - Confidence score
-        - Behavioural risk indicators
-        - AI-generated explanation (LLM)
+        Features:
+        - Threat prediction
+        - Confidence scoring
+        - Behavioral risk detection
+        - Rule-based explainability
+        - Feature contribution analysis
+        - AI-generated threat explanation
 
-        Used for deep inspection of individual cases.
+        Used for deep inspection of individual employee activity profiles.
         """,
         request={
             "application/json": {
                 "type": "object",
                 "properties": {
-                    "employee_seniority_years": {"type": "number"},
-                    "employee_classification": {"type": "number"},
-                    "total_files_burned": {"type": "number"},
-                    "entry_during_weekend": {"type": "number"},
-                    "late_exit_flag": {"type": "number"}
+                    "employee_seniority_years": {
+                        "type": "number",
+                        "description": "Number of years employee has worked in the organization"
+                    },
+                    "employee_classification": {
+                        "type": "number",
+                        "description": "Encoded employee classification level"
+                    },
+                    "total_files_burned": {
+                        "type": "number",
+                        "description": "Number of files written to external storage devices"
+                    },
+                    "entry_during_weekend": {
+                        "type": "number",
+                        "description": "Indicates whether employee accessed systems during weekend"
+                    },
+                    "late_exit_flag": {
+                        "type": "number",
+                        "description": "Indicates whether employee exited unusually late"
+                    }
                 }
             }
         },
@@ -59,41 +80,91 @@ class ModalSampleView(APIView):
             200: {
                 "type": "object",
                 "properties": {
-                    "status": {"type": "string"},
+                    "status": {
+                        "type": "string",
+                        "example": "success"
+                    },
                     "data": {
                         "type": "object",
                         "properties": {
-                            "prediction": {"type": "string"},
-                            "confidence": {"type": "number"},
+                            "prediction": {
+                                "type": "string",
+                                "description": "Threat classification result"
+                            },
+                            "confidence": {
+                                "type": "number",
+                                "description": "Model confidence score between 0 and 1"
+                            },
                             "risk_indicators": {
                                 "type": "array",
-                                "items": {"type": "string"}
+                                "items": {
+                                    "type": "string"
+                                },
+                                "description": "Detected behavioral risk indicators"
                             },
-                            "llm_explanation": {"type": "string"}
+                            "rule_based_explanations": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "description": "Human-readable explainability rules"
+                            },
+                            "feature_contributions": {
+                                "type": "object",
+                                "description": "Feature importance contributions used during prediction"
+                            },
+                            "llm_explanation": {
+                                "type": "string",
+                                "description": "AI-generated threat explanation"
+                            }
                         }
                     }
                 }
-            }
+            },
+            400: OpenApiResponse(
+                description="Invalid request payload"
+            ),
+            500: OpenApiResponse(
+                description="Internal server error during analysis"
+            )
         },
         examples=[
             OpenApiExample(
-                'Successful Response',
+                "Successful Threat Analysis",
                 value={
                     "status": "success",
                     "data": {
                         "prediction": "Malicious",
-                        "confidence": 0.83,
+                        "confidence": 0.91,
                         "risk_indicators": [
-                            "USB activity",
-                            "Weekend access"
+                            "Weekend access detected",
+                            "Burned files to USB/Disk"
                         ],
-                        "llm_explanation": "This activity shows unusual off-hours behaviour..."
+                        "rule_based_explanations": [
+                            "Employee accessed systems during weekend hours"
+                        ],
+                        "feature_contributions": {
+                            "entry_during_weekend": 0.42,
+                            "total_files_burned": 0.33
+                        },
+                        "llm_explanation": "This activity demonstrates suspicious off-hours behavior combined with removable media usage."
                     }
-                }
+                },
+                response_only=True,
+                status_codes=["200"]
+            ),
+            OpenApiExample(
+                "Internal Server Error",
+                value={
+                    "status": "error",
+                    "message": "Unexpected prediction failure"
+                },
+                response_only=True,
+                status_codes=["500"]
             )
         ]
     )
-
+        
     def post(self, request, format=None): 
         try:
             data = request.data
@@ -180,76 +251,129 @@ class ModalSampleView(APIView):
         
 class ModalCsvResultsView(APIView):
     @extend_schema(
-        summary="Paginate CSV dataset threat detection results",
-        description="""
-        Pagination, allows for different results to be produced in the rows of the table produced
-        after CSV batch analysis.
+    tags=["CSV Threat Analysis"],
+    summary="Retrieve paginated CSV threat analysis results",
+    description="""
+    Retrieves paginated threat analysis results generated from a previously uploaded CSV dataset.
 
-        Performance optimised:
-        - AI explanations limited to top high-risk rows
-        """,
-        
-        request={
-            "multipart/form-data": {
-                "type": "string",
-                "properties": {
-                    "csvFile": {
-                        "type": "string",
-                        "format": "binary"
+    Supports:
+    - Pagination
+    - Threat filtering
+    - Confidence sorting
+    - Cached analysis retrieval
+
+    Optimized for large datasets to reduce frontend rendering overhead.
+    """,
+    parameters=[
+        OpenApiParameter(
+            name='analysis_id',
+            type=str,
+            location=OpenApiParameter.QUERY,
+            required=True,
+            description='Unique analysis session identifier'
+        ),
+        OpenApiParameter(
+            name='page',
+            type=int,
+            location=OpenApiParameter.QUERY,
+            description='Page number for paginated results'
+        ),
+        OpenApiParameter(
+            name='page_size',
+            type=int,
+            location=OpenApiParameter.QUERY,
+            description='Number of records per page'
+        ),
+        OpenApiParameter(
+            name='filter',
+            type=str,
+            location=OpenApiParameter.QUERY,
+            description='Filter type: all, malicious, normal'
+        ),
+        OpenApiParameter(
+            name='sort_by',
+            type=str,
+            location=OpenApiParameter.QUERY,
+            description='Field used for sorting results'
+        ),
+        OpenApiParameter(
+            name='order',
+            type=str,
+            location=OpenApiParameter.QUERY,
+            description='Sort order: asc or desc'
+        ),
+    ],
+    responses={
+        200: {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "type": "object"
                     }
-                }
-            }
-        },
-        responses={
-            200: {
-                "type": "object",
-                "properties": {
-                    "status": {"type": "string"},
-                    "analysis_id":{"type": "string"},
-                    "summary": {"type": "object"},
-                    "feature_insights": {"type": "array"},
-                    "data": {"type": "array"},
-                    "pagination": {"type": "object"}
-                }
-            }
-        },
-        parameters=[
-        OpenApiParameter(name='analysis_id', type=int, location=OpenApiParameter.QUERY),
-        OpenApiParameter(name='page', type=int, location=OpenApiParameter.QUERY),
-        OpenApiParameter(name='page_size', type=int, location=OpenApiParameter.QUERY),
-        OpenApiParameter(name='filter', type=str, location=OpenApiParameter.QUERY),
-        OpenApiParameter(name='sort_by', type=str, location=OpenApiParameter.QUERY),
-        OpenApiParameter(name='order', type=str, location=OpenApiParameter.QUERY),
-        ],
-        examples=[
-            OpenApiExample(
-                'CSV Analysis Response',
-                value={
-                    "status": "success",
-                    "analysis_id":"0e154789-00d11412",
-                    "summary": {
-                        "total_scanned": 1000,
-                        "threats_found": 74,
-                        "high_risk": 20,
-                        "medium_risk": 54,
-                        "threat_percentage": 7.4
-                    },
-                    "data": [
-                        {
-                            "row_index": 1,
-                            "prediction": "Malicious",
-                            "confidence": 0.87,
-                            "risk_indicators": ["USB activity"]
+                },
+                "pagination": {
+                    "type": "object",
+                    "properties": {
+                        "page": {
+                            "type": "integer"
+                        },
+                        "page_size": {
+                            "type": "integer"
+                        },
+                        "total": {
+                            "type": "integer"
+                        },
+                        "total_pages": {
+                            "type": "integer"
                         }
-                    ],
-                    "pagination": {
-                        "page": 1,
-                        "total_pages": 10
                     }
                 }
-            )
-        ]
-    )
+            }
+        },
+        400: OpenApiResponse(
+            description="Invalid or expired analysis ID"
+        ),
+        500: OpenApiResponse(
+            description="Internal server error during pagination"
+        )
+    },
+    examples=[
+        OpenApiExample(
+            "Successful Pagination Response",
+            value={
+                "data": [
+                    {
+                        "row_index": 1,
+                        "prediction": "Malicious",
+                        "confidence": 0.94,
+                        "risk_level": "High",
+                        "risk_indicators": [
+                            "Weekend access detected"
+                        ]
+                    }
+                ],
+                "pagination": {
+                    "page": 1,
+                    "page_size": 10,
+                    "total": 1000,
+                    "total_pages": 100
+                }
+            },
+            response_only=True,
+            status_codes=["200"]
+        ),
+        OpenApiExample(
+            "Expired Analysis",
+            value={
+                "error": "Analysis expired or invalid"
+            },
+            response_only=True,
+            status_codes=["400"]
+        )
+    ]
+)   
     def get(self, request):
         try:
             analysis_id = request.query_params.get("analysis_id")
@@ -292,10 +416,114 @@ class ModalCsvResultsView(APIView):
             return Response({
                 "error": str(e)
             }, status=500)
-    
-
 #csv analysis
 class ModalCsvAnalyzeView(APIView):
+    @extend_schema(
+    tags=["CSV Threat Analysis"],
+    summary="Analyze uploaded CSV dataset",
+    description="""
+    Uploads and analyzes a CSV dataset containing employee activity logs.
+
+    Features:
+    - Machine learning threat detection
+    - Behavioral risk analysis
+    - Explainability generation
+    - AI-generated threat summaries
+    - Risk classification
+    - Evaluation metrics generation
+    - Cached analysis optimization
+
+    Designed for large-scale insider threat detection workflows.
+    """,
+    request={
+        "multipart/form-data": {
+            "type": "object",
+            "properties": {
+                "csvFile": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "CSV dataset containing employee activity records"
+                }
+            },
+            "required": ["csvFile"]
+        }
+    },
+    responses={
+        200: {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "example": "success"
+                },
+                "analysis_id": {
+                    "type": "string",
+                    "description": "Unique cached analysis identifier"
+                },
+                "summary": {
+                    "type": "object",
+                    "description": "Threat analysis summary statistics"
+                },
+                "feature_insights": {
+                    "type": "array",
+                    "description": "Top contributing ML model features"
+                },
+                "data": {
+                    "type": "array",
+                    "description": "Paginated analysis results"
+                },
+                "pagination": {
+                    "type": "object",
+                    "description": "Pagination metadata"
+                }
+            }
+        },
+        400: OpenApiResponse(
+            description="CSV file not provided"
+        ),
+        500: OpenApiResponse(
+            description="Internal server error during CSV analysis"
+        )
+    },
+    examples=[
+        OpenApiExample(
+            "Successful CSV Analysis",
+            value={
+                "status": "success",
+                "analysis_id": "d290f1ee-6c54-4b01-90e6-d701748f0851",
+                "summary": {
+                    "total_scanned": 1000,
+                    "threats_found": 74,
+                    "high_risk": 20,
+                    "medium_risk": 54,
+                    "threat_percentage": 7.4
+                },
+                "feature_insights": [
+                    {
+                        "feature": "entry_during_weekend",
+                        "importance": 0.42
+                    }
+                ],
+                "pagination": {
+                    "page": 1,
+                    "page_size": 10,
+                    "total": 1000,
+                    "total_pages": 100
+                }
+            },
+            response_only=True,
+            status_codes=["200"]
+        ),
+        OpenApiExample(
+            "Missing CSV File",
+            value={
+                "error": "CSV file not provided"
+            },
+            response_only=True,
+            status_codes=["400"]
+        )
+    ]
+)
     def post(self, request, format=None):
         file = request.FILES.get('csvFile')
         

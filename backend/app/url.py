@@ -8,6 +8,6 @@ urlpatterns = [
     path("modal-sample/", views.ModalSampleView.as_view()),
     path("modal-csv/results/", views.ModalCsvResultsView.as_view()),
     path("modal-csv/analyze/", views.ModalCsvAnalyzeView.as_view()),
-    path('schema/', SpectacularAPIView.as_view(), name='schema'),
-    path('docs/', SpectacularSwaggerView.as_view(url_name='schema')),
+    path('schema/', SpectacularAPIView.as_view(), name='schema'), #yamal schema endpoint
+    path('docs/', SpectacularSwaggerView.as_view(url_name='schema'),name='swagger-ui'), # swagger schema endpoint
 ]
