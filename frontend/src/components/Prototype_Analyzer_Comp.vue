@@ -175,7 +175,10 @@ const analyzeData = async () => {
         totalPages.value = data.pagination.total_pages;
         totalItems.value = data.pagination.total_pages;
         evaluation.value = data.summary.evaluation;
-        localStorage.setItem("analysis_id", data.analysis_id);
+        if (data?.analysis_id) {
+          analysisId.value = data.analysis_id;
+          localStorage.setItem("analysis_id", data.analysis_id);
+        }
       }
       // if (data?.status === "success") {
       //   results.value = data.data;
@@ -216,16 +219,23 @@ const analyzeData = async () => {
 };
 
 let isFetching = false;
-onMounted(async () => {
+
+const restoreSession = async () => {
   const savedId = localStorage.getItem("analysis_id");
 
-  if (savedId) {
-    analysisId.value = savedId;
-    analysisType.value = "csv";
+  if (!savedId) return;
 
+  analysisId.value = savedId;
+  analysisType.value = "csv";
+
+  try {
     await fetchResults();
+  } catch (err) {
+    localStorage.removeItem("analysis_id");
+    analysisId.value = null;
   }
-});
+};
+
 //this is the watch function that makes a pagination request to the backend to load another page
 watch([page, itemsPerPage, filter, sortBy, order], async () => {
   if (analysisType.value !== "csv" || !analysisId.value) {
